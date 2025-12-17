@@ -106,6 +106,32 @@ class UpdateProfileView(APIView):
         }}, status=200)
 
 
+
+
+class HotelDetailView(APIView):
+    
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request, resort_id):
+        try:
+            resort = Resort.objects.get(pk=resort_id)
+        except Resort.DoesNotExist:
+            return Response({'error': 'Resort not found.'}, status=status.HTTP_404_NOT_FOUND)
+
+        rooms = Room.objects.filter(resort=resort)
+        serializer = RoomSerializer(rooms, many=True)
+
+        resort_data = {
+            'id': resort.id,
+            'name': resort.name,
+            'location': resort.location,
+            'description': resort.description,
+            'amenities': resort.amenities,
+            'rooms': serializer.data
+        }
+
+        return Response(resort_data, status=status.HTTP_200_OK)
+
 class RoomSearchView(APIView):
     permission_classes = [IsAuthenticated]
 
@@ -156,7 +182,7 @@ class RoomSearchView(APIView):
                 results.append(resort_data)
 
         if not results:
-             return Response({'message': 'No rooms available for the selected criteria in this location.'}, status=status.HTTP_200_OK)
+            return Response({'message': 'No rooms available for the selected criteria in this location.'}, status=status.HTTP_200_OK)
 
         return Response(results, status=status.HTTP_200_OK)
 
@@ -300,6 +326,10 @@ class CreateRazorpayOrderView(APIView):
         }, status=status.HTTP_201_CREATED)
 
 
+
+
+
+
 class VerifyPaymentView(APIView):
     permission_classes = [IsAuthenticated]
 
@@ -334,8 +364,7 @@ class VerifyPaymentView(APIView):
             # Check if booking attempt belongs to the user
             booking_attempt = payment.attempt
             if booking_attempt.user != request.user:
-                 return Response({"error": "Booking does not belong to the authenticated user."}, status=status.HTTP_403_FORBIDDEN)
-
+                return Response({"error": "Booking does not belong to the authenticated user."}, status=status.HTTP_403_FORBIDDEN)
             payment.status = 'success'
             payment.save()
             
@@ -348,7 +377,6 @@ class VerifyPaymentView(APIView):
                 status='confirmed',
                 payment=payment
             )
-
             for attempt_room in BookingAttemptRooms.objects.filter(attempt=booking_attempt):
                 BookingRoom.objects.create(booking=final_booking, room=attempt_room.room)
             
@@ -359,19 +387,15 @@ class VerifyPaymentView(APIView):
                     name=guest_temp.name,
                     age=guest_temp.age
                 )
-
             booking_attempt.status = 'completed'
             booking_attempt.save()
-
             # TODO: Add a task to send booking confirmation emails
             # send_booking_emails_task.delay(final_booking.id)
-
             return Response({
                 "success": True,
                 "message": "Payment verified successfully",
                 "booking_id": final_booking.id
             })
-
         except razorpay.errors.SignatureVerificationError:
             return Response(
                 {"success": False, "message": "Payment verification failed"},
@@ -383,3 +407,7 @@ class VerifyPaymentView(APIView):
                 {"success": False, "message": f"An unexpected error occurred: {str(e)}"},
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR
             )
+
+
+
+
