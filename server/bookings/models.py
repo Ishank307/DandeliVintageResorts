@@ -65,6 +65,7 @@ class OTP(models.Model):
 
 class Resort(models.Model):
     name = models.CharField(max_length=100, unique=True)
+    de
     location = models.CharField(max_length=255)
 
     def __str__(self):
