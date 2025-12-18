@@ -2,6 +2,7 @@ import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
   images: {
+    unoptimized:true,
     remotePatterns: [
       {
         protocol: "http",
@@ -15,7 +16,15 @@ const nextConfig: NextConfig = {
         pathname: "/**",
       },
     ],
+    // ✅ Add this to allow localhost
+    dangerouslyAllowSVG: true,
+    contentDispositionType: 'attachment',
+    contentSecurityPolicy: "default-src 'self'; script-src 'none'; sandbox;",
   },
+  // ✅ Or add this experimental flag
+  // experimental: {
+  //   allowedOrigins: ["localhost:8000"],
+  // }, 
 };
 
 export default nextConfig;

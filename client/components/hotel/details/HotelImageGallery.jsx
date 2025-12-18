@@ -28,13 +28,14 @@ export default function HotelImageGallery({ images = [], hotelName }) {
             </div>
         )
     }
+    console.log('this '+ images[0])
 
     return (
         <div>
             {/* Main Image */}
             <div className="relative w-full h-[280px] md:h-[350px] rounded-lg overflow-hidden mb-3">
                 {images[0] &&<Image
-                    src={"http://localhost:8000/media/room_images/download_1.jpg"}
+                    src={images[0]}
                     alt={`${hotelName} - Main`}
                     fill
                     className="object-cover"
