@@ -65,8 +65,12 @@ class OTP(models.Model):
 
 class Resort(models.Model):
     name = models.CharField(max_length=100, unique=True)
-    de
+    description = models.TextField( null=True, blank=True)
     location = models.CharField(max_length=255)
+    aminities = models.TextField( null=True, blank=True)
+    lat = models.DecimalField(max_digits=9, decimal_places=6, null=True, blank=True)
+    lng = models.DecimalField(max_digits=9, decimal_places=6, null=True,
+    blank=True)
 
     def __str__(self):
         return self.name
@@ -76,6 +80,7 @@ class Room(models.Model):
     room_number = models.CharField(max_length=10)
     capacity = models.PositiveIntegerField()
     price_per_night = models.DecimalField(max_digits=10, decimal_places=2, default=0.00)
+    room_aminities = models.TextField( null=True, blank=True)
 
     def __str__(self):
         return f"Room {self.room_number} at {self.resort.name}"
