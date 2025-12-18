@@ -31,10 +31,16 @@ export default function SearchBar() {
 
     const handleSearch = (e) => {
         e.preventDefault()
-        if (location) {
-            router.push(`/search?location=${encodeURIComponent(location)}`)
+
+        if (!location || !checkInDate || !checkOutDate || totalGuests < 1) {
+            return
         }
+
+        router.push(
+            `/search?location=${encodeURIComponent(location)}&check_in=${format(checkInDate, "yyyy-MM-dd")}&check_out=${format(checkOutDate, "yyyy-MM-dd")}&guests=${totalGuests}`
+        )
     }
+
 
     const handleDateChange = (checkIn, checkOut) => {
         setCheckInDate(checkIn)

@@ -9,6 +9,7 @@ from datetime import datetime, timedelta
 from rest_framework.decorators import api_view
 from rest_framework_simplejwt.tokens import RefreshToken
 from rest_framework.permissions import IsAuthenticated
+from rest_framework.permissions import AllowAny
 from django.utils import timezone
 from decimal import Decimal
 import razorpay
@@ -110,7 +111,7 @@ class UpdateProfileView(APIView):
 
 class HotelDetailView(APIView):
     
-    permission_classes = [IsAuthenticated]
+    permission_classes = [AllowAny]
 
     def get(self, request, resort_id):
         try:
@@ -126,14 +127,14 @@ class HotelDetailView(APIView):
             'name': resort.name,
             'location': resort.location,
             'description': resort.description,
-            'amenities': resort.amenities,
+            'amenities': resort.aminities,
             'rooms': serializer.data
         }
 
         return Response(resort_data, status=status.HTTP_200_OK)
 
 class RoomSearchView(APIView):
-    permission_classes = [IsAuthenticated]
+    permission_classes = [AllowAny]
 
     def get(self, request):
         location = request.query_params.get('location')

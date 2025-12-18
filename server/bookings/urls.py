@@ -20,5 +20,5 @@ urlpatterns = [
     path('booking/add-guests/', AddGuestDetailsView.as_view(), name='add-guests'),
     path('booking/create-order/', CreateRazorpayOrderView.as_view(), name='create-order'),
     path('booking/verify-payment/', VerifyPaymentView.as_view(), name='verify-payment'),
-    path('hotels/<int:hotel_id>/', HotelDetailView.as_view(), name='hotel-detail'),
+    path('hotels/<int:resort_id>/', HotelDetailView.as_view(), name='hotel-detail'),
 ]

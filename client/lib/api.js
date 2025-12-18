@@ -164,9 +164,10 @@ export const createBooking = async (bookingData) => {
     return handleResponse(response);
 };
 
+
 /**
  * Get all bookings for current user
- */
+*/
 export const getUserBookings = async () => {
     const token = getAuthToken();
 
@@ -201,11 +202,27 @@ export const formatDateForAPI = (date) => {
 
 /**
  * Get full image URL
- */
+*/
 export const getImageUrl = (imageUrl) => {
     if (!imageUrl) return '';
     if (imageUrl.startsWith('http')) return imageUrl;
 
     const baseUrl = API_BASE_URL.replace('/api', '');
     return `${baseUrl}${imageUrl}`;
+};
+
+// ==================== Hotel APIs ====================
+
+/**
+ * Get hotel details by ID
+ */
+export const getHotelDetails = async (hotelId) => {
+    const response = await fetch(`${API_BASE_URL}/hotels/${hotelId}/`, {
+        method: 'GET',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+    });
+
+    return handleResponse(response);
 };
