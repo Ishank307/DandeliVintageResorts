@@ -36,6 +36,7 @@ export default function SearchPage() {
                     location,
                     checkInDate,
                     checkOutDate,
+
                     guests: Number(guests),
                 })
                 if (Array.isArray(data)) {
@@ -68,7 +69,7 @@ export default function SearchPage() {
     if (error) {
         return <p className="text-center mt-20 text-red-600">{error}</p>
     }
-
+    console.log(results)
     return (
         <main className="container mx-auto px-4 pt-8 pb-12">
             <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">

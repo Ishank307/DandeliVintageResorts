@@ -3,7 +3,7 @@
 import Image from "next/image"
 import { Button } from "@/components/ui/Button"
 
-export default function HotelRoomSelection({ rooms }) {
+export default function HotelRoomSelection({ rooms, mediaBaseUrl }) {
     return (
         <section className="mb-8">
             <h2 className="text-2xl font-bold text-gray-900 mb-6">Choose your room</h2>
@@ -16,7 +16,7 @@ export default function HotelRoomSelection({ rooms }) {
                         {/* Room Image */}
                         <div className="relative h-48">
                             <Image
-                                src={room.image}
+                                src={`${mediaBaseUrl}${room.images[0].image}`}
                                 alt={room.name}
                                 fill
                                 className="object-cover group-hover:scale-105 transition-transform duration-300"

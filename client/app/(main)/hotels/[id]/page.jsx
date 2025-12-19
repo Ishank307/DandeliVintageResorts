@@ -43,7 +43,7 @@ export default function HotelDetailsPage({ params }) {
     console.log(hotel.rooms[0]);
     const hotelImages = hotel.rooms.flatMap(room =>
         room.images.map(img => MEDIA_BASE_URL + img.image)
-    )   
+    )
     console.log(hotelImages)
     return (
         <div className="min-h-screen bg-white">
@@ -63,7 +63,7 @@ export default function HotelDetailsPage({ params }) {
                         {/* <HotelAmenities amenities={hotel.amenities} /> */}
 
                         {/* THIS feeds real room IDs */}
-                        <HotelRoomSelection rooms={hotel.rooms} />
+                        <HotelRoomSelection rooms={hotel.rooms} mediaBaseUrl={MEDIA_BASE_URL} />
                     </div>
 
                     {/* RIGHT */}
@@ -73,8 +73,8 @@ export default function HotelDetailsPage({ params }) {
                                 hotelId={hotel.id}
                                 hotelName={hotel.name}
                                 location={hotel.location}
-                                originalPrice={hotel.rooms[0]?.price}
-                                discountedPrice={hotel.rooms[0]?.price}
+                                originalPrice={hotel.rooms[0]?.price_per_night}
+                                discountedPrice={hotel.rooms[0]?.price_per_night}
                                 discountPercentage={0}
                             />
                         </div>
