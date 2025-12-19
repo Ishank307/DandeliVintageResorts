@@ -153,7 +153,7 @@ export default function SearchPage() {
                                     </p>
 
                                     <p className="text-lg font-semibold text-primary">
-                                        Starting from ₹{Math.min(...resort.available_rooms.map(r => r.price))}
+                                        Starting from ₹{Math.min(...resort.available_rooms.map(r => r.price_per_night))}
                                     </p>
 
                                 </div>

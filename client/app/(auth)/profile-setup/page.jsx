@@ -146,7 +146,9 @@ export default function ProfileSetupPage() {
                                         type="date"
                                         value={formData.date_of_birth}
                                         onChange={handleChange}
-                                        className="block w-full px-3 py-2 mt-1 placeholder-slate-400 bg-white/90 backdrop-blur-sm border rounded-lg border-white/30 focus:outline-none focus:ring-2 focus:ring-white/50 focus:border-white sm:text-sm"
+                                        max={new Date().toISOString().split('T')[0]}
+                                        min={new Date(new Date().getFullYear() - 100, 0, 1).toISOString().split('T')[0]}
+                                        className="block w-full px-3 py-2 mt-1 placeholder-slate-400 bg-white/90 backdrop-blur-sm border rounded-lg border-white/30 focus:outline-none focus:ring-2 focus:ring-white/50 focus:border-white sm:text-sm [&::-webkit-calendar-picker-indicator]:cursor-pointer"
                                     />
                                 </div>
 
