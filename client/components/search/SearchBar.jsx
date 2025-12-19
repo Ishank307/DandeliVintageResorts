@@ -12,7 +12,7 @@ import { format, addDays } from "date-fns"
 export default function SearchBar() {
     const router = useRouter()
 
-    const [location, setLocation] = useState("Hubli-Dharwad, Karnataka, India")
+    const [location, setLocation] = useState("Dandeli, Karnataka, India")
 
     // Popover states
     const [showLocation, setShowLocation] = useState(false)
