@@ -1,18 +1,66 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import Link from "next/link"
 import Image from "next/image"
 import { ChevronLeft, Lock, Phone, Calendar, User, Tag } from "lucide-react"
 import { Button } from "@/components/ui/Button"
 import { Input } from "@/components/ui/Input"
+import { useParams, useSearchParams } from "next/navigation"
 
-export default function BookingPage({ params }) {
+import { getHotelDetails, getImageUrl } from "@/lib/api";
+
+const loadBookingData = async ({
+    resortId,
+    checkInDate,
+    checkOutDate,
+    selectedRoom,
+    appliedCoupon
+}) => {
+    const hotel = await getHotelDetails(resortId);
+
+    const nights =
+        (new Date(checkOutDate) - new Date(checkInDate)) /
+        (1000 * 60 * 60 * 24);
+
+    return {
+        hotel: {
+            name: hotel.name,
+            rating: 4.5,              // static for now (no backend field)
+            reviews: 188,             // static for now
+            image: getImageUrl(selectedRoom.image),
+        },
+
+        booking: {
+            checkIn: new Date(checkInDate).toDateString(),
+            nights,
+            roomType: selectedRoom.room_type,
+        },
+
+        pricing: {
+            roomCharge: selectedRoom.price_per_night * nights,
+            instantDiscount: 774,     // frontend logic
+            wizardDiscount: 60,
+            couponDiscount: appliedCoupon ? 500 : 0,
+        },
+    };
+};
+
+
+
+export default function BookingPage() {
     const [currentStep, setCurrentStep] = useState(1) // 1 = Guest Details, 2 = Payment Options
     const [paymentMethod, setPaymentMethod] = useState("property")
     const [couponCode, setCouponCode] = useState("")
     const [appliedCoupon, setAppliedCoupon] = useState(null)
     const [showCouponInput, setShowCouponInput] = useState(false)
+    const {id} = useParams();
+    const searchParams = useSearchParams()
+
+    const checkInDate = searchParams.get("checkIn")
+    const checkOutDate = searchParams.get("checkOut")
+    const guests = Number(searchParams.get("guests"))
+    const roomType = searchParams.get("roomType")
 
     // Guest details form
     const [guestDetails, setGuestDetails] = useState({
@@ -27,31 +75,69 @@ export default function BookingPage({ params }) {
         phone: ""
     })
 
-    // Sample data - replace with actual data from API
-    const bookingData = {
-        hotel: {
-            name: "Dandeli Nature Resort",
-            rating: 4.5,
-            reviews: 188,
-            image: "/images/placeholder-room.jpg",
-        },
-        booking: {
-            checkIn: "30 Dec",
-            nights: 1,
-            roomType: "Deluxe"
-        },
-        pricing: {
-            roomCharge: 3425,
-            instantDiscount: 774,
-            wizardDiscount: 60,
-            couponDiscount: appliedCoupon ? 500 : 0
+    const [bookingData, setBookingData] = useState(null);
+
+    useEffect(() => {
+        if (!id || !checkInDate || !checkOutDate) return
+
+        async function init() {
+            const hotel = await getHotelDetails(id)
+
+            const selectedRoom =
+                hotel.rooms.find(room => room.capacity >= guests) ||
+                hotel.rooms[0]
+
+            const nights =
+                (new Date(checkOutDate) - new Date(checkInDate)) /
+                (1000 * 60 * 60 * 24)
+
+            setBookingData({
+                hotel: {
+                    name: hotel.name,
+                    rating: 4.5,
+                    reviews: 188,
+                    image: getImageUrl(selectedRoom.images[0]?.image),
+                },
+                booking: {
+                    checkIn: new Date(checkInDate).toDateString(),
+                    nights,
+                    roomType: `Room ${selectedRoom.room_number}`,
+                    guests,
+                },
+                pricing: {
+                    roomCharge: Number(selectedRoom.price_per_night) * nights,
+                    instantDiscount: 774,
+                    wizardDiscount: 60,
+                    couponDiscount: appliedCoupon ? 500 : 0,
+                },
+            })
         }
+
+        init()
+    }, [
+        id,
+        checkInDate,
+        checkOutDate,
+        guests,
+        appliedCoupon
+    ])
+
+    if (!bookingData) {
+        return (
+            <div className="min-h-screen flex items-center justify-center bg-gray-50">
+                <div className="text-gray-600 text-lg font-medium">
+                    Loading booking details…
+                </div>
+            </div>
+        );
     }
 
-    const total = bookingData.pricing.roomCharge -
-        bookingData.pricing.instantDiscount -
-        bookingData.pricing.wizardDiscount -
-        bookingData.pricing.couponDiscount
+    const total =
+        (bookingData?.pricing?.roomCharge ?? 0) -
+        (bookingData?.pricing?.instantDiscount ?? 0) -
+        (bookingData?.pricing?.wizardDiscount ?? 0) -
+        (bookingData?.pricing?.couponDiscount ?? 0);
+
 
     const handleApplyCoupon = () => {
         if (couponCode.toUpperCase() === "SAVE500") {
@@ -279,8 +365,8 @@ export default function BookingPage({ params }) {
                                             {/* Pay at Property */}
                                             <div
                                                 className={`p-5 rounded-lg border-2 cursor-pointer transition-all ${paymentMethod === "property"
-                                                        ? "border-green-500 bg-green-50"
-                                                        : "border-gray-200"
+                                                    ? "border-green-500 bg-green-50"
+                                                    : "border-gray-200"
                                                     }`}
                                                 onClick={() => setPaymentMethod("property")}
                                             >
@@ -303,8 +389,8 @@ export default function BookingPage({ params }) {
                                             {/* Pay Now */}
                                             <div
                                                 className={`p-5 rounded-lg border-2 cursor-pointer transition-all ${paymentMethod === "now"
-                                                        ? "border-green-500 bg-green-50"
-                                                        : "border-gray-200"
+                                                    ? "border-green-500 bg-green-50"
+                                                    : "border-gray-200"
                                                     }`}
                                                 onClick={() => setPaymentMethod("now")}
                                             >

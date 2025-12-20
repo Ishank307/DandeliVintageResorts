@@ -33,9 +33,16 @@ export default function HotelBookingCard({
         setShowDatePicker(false)
     }
 
-    const handleBookNow = () => {
-        router.push(`/booking/${hotelId}`)
+   const handleBookNow = () => {
+        router.push(
+            `/booking/${hotelId}` +
+            `?checkIn=${format(checkIn, "yyyy-MM-dd")}` +
+            `&checkOut=${format(checkOut, "yyyy-MM-dd")}` +
+            `&guests=${guests}` +
+            `&roomType=${roomType}`
+        )
     }
+
 
     return (
         <div className="lg:sticky lg:top-20">

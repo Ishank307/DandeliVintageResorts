@@ -1,7 +1,7 @@
 "use client"
 
 import { useEffect, useState } from "react"
-import { useParams } from "next/navigation"
+import { useParams,useSearchParams } from "next/navigation"
 import { getHotelDetails } from "@/lib/api"
 
 import HotelImageGallery from "@/components/hotel/details/HotelImageGallery"
@@ -17,6 +17,8 @@ export default function HotelDetailsPage({ params }) {
     const [hotel, setHotel] = useState(null)
     const [loading, setLoading] = useState(true)
     const [error, setError] = useState(null)
+
+
 
 
     useEffect(() => {
@@ -43,7 +45,7 @@ export default function HotelDetailsPage({ params }) {
     console.log(hotel.rooms[0]);
     const hotelImages = hotel.rooms.flatMap(room =>
         room.images.map(img => MEDIA_BASE_URL + img.image)
-    )
+    )   
     console.log(hotelImages)
     return (
         <div className="min-h-screen bg-white">
@@ -63,7 +65,7 @@ export default function HotelDetailsPage({ params }) {
                         {/* <HotelAmenities amenities={hotel.amenities} /> */}
 
                         {/* THIS feeds real room IDs */}
-                        <HotelRoomSelection rooms={hotel.rooms} mediaBaseUrl={MEDIA_BASE_URL} />
+                        <HotelRoomSelection rooms={hotel.rooms} />
                     </div>
 
                     {/* RIGHT */}

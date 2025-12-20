@@ -226,3 +226,69 @@ export const getHotelDetails = async (hotelId) => {
 
     return handleResponse(response);
 };
+
+// ==================== Booking Flow APIs ====================
+
+export const selectRooms = async (data) => {
+    const token = getAuthToken();
+
+    const response = await fetch(`${API_BASE_URL}/booking/select-rooms/`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`,
+        },
+        credentials: 'include',
+        body: JSON.stringify(data),
+    });
+
+    return handleResponse(response);
+};
+
+export const addGuestDetails = async (data) => {
+    const token = getAuthToken();
+
+    const response = await fetch(`${API_BASE_URL}/booking/add-guests/`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`,
+        },
+        credentials: 'include',
+        body: JSON.stringify(data),
+    });
+
+    return handleResponse(response);
+};
+
+export const createRazorpayOrder = async (data) => {
+    const token = getAuthToken();
+
+    const response = await fetch(`${API_BASE_URL}/booking/create-order/`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`,
+        },
+        credentials: 'include',
+        body: JSON.stringify(data),
+    });
+
+    return handleResponse(response);
+};
+
+export const verifyPayment = async (data) => {
+    const token = getAuthToken();
+
+    const response = await fetch(`${API_BASE_URL}/booking/verify-payment/`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`,
+        },
+        credentials: 'include',
+        body: JSON.stringify(data),
+    });
+
+    return handleResponse(response);
+};
