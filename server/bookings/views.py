@@ -128,7 +128,9 @@ class HotelDetailView(APIView):
             'location': resort.location,
             'description': resort.description,
             'amenities': resort.aminities,
-            'rooms': serializer.data
+            'rooms': serializer.data,
+            'lat' :resort.lat,
+            'lng': resort.lng
         }
 
         return Response(resort_data, status=status.HTTP_200_OK)

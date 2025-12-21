@@ -5,18 +5,24 @@ const amenityIcons = {
     "Swimming Pool": Waves,
     "Breakfast Buffet": Utensils,
     "Smart TV": Tv,
-    "Spa & Wellness": Dumbbell,
+    "Spa": Dumbbell,
     "Airport Pickup": Plane,
     "Beach": Waves,
     "Laundry Service": WashingMachine,
 }
 
 export default function HotelAmenities({ amenities }) {
+     const amenitiesArray =
+        typeof amenities === "string"
+            ? amenities.split(",").map(a => a.trim())
+            : []
+
+    if (amenitiesArray.length === 0) return null
     return (
         <section className="mb-8">
             <h2 className="text-2xl font-bold text-gray-900 mb-4">Amenities</h2>
             <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-                {amenities.map((amenity, index) => {
+                {amenitiesArray.map((amenity, index) => {
                     const Icon = amenityIcons[amenity] || Coffee
                     return (
                         <div

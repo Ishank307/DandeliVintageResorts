@@ -46,7 +46,9 @@ export default function HotelDetailsPage({ params }) {
     const hotelImages = hotel.rooms.flatMap(room =>
         room.images.map(img => MEDIA_BASE_URL + img.image)
     )   
-    console.log(hotelImages)
+    // console.log(hotelImages)
+    console.log("Amenities:", hotel.amenities, typeof hotel.amenities)
+
     return (
         <div className="min-h-screen bg-white">
             <div className="container mx-auto px-6 md:px-12 lg:px-16 xl:px-24 py-6">
@@ -62,10 +64,11 @@ export default function HotelDetailsPage({ params }) {
                         <HotelImageGallery images={hotelImages} hotelName={hotel.name} />
 
                         <HotelAbout description={hotel.description} />
-                        {/* <HotelAmenities amenities={hotel.amenities} /> */}
+                        <HotelAmenities amenities={hotel.amenities} />
 
                         {/* THIS feeds real room IDs */}
                         <HotelRoomSelection rooms={hotel.rooms} />
+                        <HotelLocation location = {hotel.location}  coordinates={{ lat: hotel.lat, lng: hotel.lng }}/>
                     </div>
 
                     {/* RIGHT */}
