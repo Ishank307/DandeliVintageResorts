@@ -419,3 +419,29 @@ class ExploreView(APIView):
         rooms = Room.objects.all().order_by('?')
         serializer = RoomSerializer(rooms, many=True)
         return Response(serializer.data)
+
+
+
+class ReviewCreateView(APIView):
+    permission_classes = [IsAuthenticated]
+
+
+    def post(self, request):
+        data = request.data
+        serializer = ReviewSerializer(data=data)
+        if serializer.is_valid():
+            serializer.save(user=request.user)
+            return Response(serializer.data, status=status.HTTP_201_CREATED)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+
+
+
+
+class ReviewListView(APIView):
+    permission_classes = [AllowAny]
+
+    def get(self, request, pk):
+        reviews = Review.objects.filter(resort_id=pk)
+        serializer = ReviewSerializer(reviews, many=True)
+        return Response(serializer.data)

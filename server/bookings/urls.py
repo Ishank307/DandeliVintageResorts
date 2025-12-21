@@ -8,7 +8,10 @@ from .views import (
     AddGuestDetailsView, 
     CreateRazorpayOrderView,
     HotelDetailView,
-    VerifyPaymentView
+    VerifyPaymentView,
+    ReviewCreateView,
+    ReviewListView,
+    ExploreView,
 )
 
 urlpatterns = [
@@ -22,4 +25,7 @@ urlpatterns = [
     path('booking/verify-payment/', VerifyPaymentView.as_view(), name='verify-payment'),
     path('hotels/<int:resort_id>/', HotelDetailView.as_view(), name='hotel-detail'),
     path('explore/', ExploreView.as_view(), name='explore'),
+    path('reviews/create/', ReviewCreateView.as_view(), name='review-create'),
+    path('reviews/<int:pk>/', ReviewListView.as_view(), name='review-list'),
+    
 ]
