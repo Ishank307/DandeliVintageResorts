@@ -412,5 +412,10 @@ class VerifyPaymentView(APIView):
             )
 
 
+class ExploreView(APIView):
+    permission_classes = [AllowAny]
 
-
+    def get(self, request):
+        rooms = Room.objects.all().order_by('?')
+        serializer = RoomSerializer(rooms, many=True)
+        return Response(serializer.data)
