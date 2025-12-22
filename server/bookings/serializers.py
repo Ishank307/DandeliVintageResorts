@@ -1,6 +1,6 @@
 
 from rest_framework import serializers
-from .models import User, OTP, Resort, Room, BookingAttempt, FinalBooking, Payment, RoomImage
+from .models import User, OTP, Resort, Room, BookingAttempt, FinalBooking, Payment, RoomImage,Review
 
 class UserSerializer(serializers.ModelSerializer):
     class Meta:
@@ -46,3 +46,25 @@ class FinalBookingSerializer(serializers.ModelSerializer):
     class Meta:
         model = FinalBooking
         fields = '__all__'
+
+class UserMiniSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = User
+        fields = ("id", "name")
+
+
+class ReviewSerializer(serializers.ModelSerializer):
+    user = UserMiniSerializer(read_only=True)
+    resort = serializers.PrimaryKeyRelatedField(read_only=True)
+
+    class Meta:
+        model = Review
+        fields = (
+            "id",
+            "user",
+            "resort",
+            "rating",
+            "comment",
+            "created_at",
+            "updated_at",
+        )

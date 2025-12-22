@@ -8,43 +8,46 @@ import { Button } from "@/components/ui/Button"
 import { Input } from "@/components/ui/Input"
 import { useParams, useSearchParams } from "next/navigation"
 
-import { getHotelDetails, getImageUrl } from "@/lib/api";
+import { useRouter } from "next/navigation"
 
-const loadBookingData = async ({
-    resortId,
-    checkInDate,
-    checkOutDate,
-    selectedRoom,
-    appliedCoupon
-}) => {
-    const hotel = await getHotelDetails(resortId);
+import { getHotelDetails, getImageUrl ,addGuestDetails,selectRooms,formatDateForAPI,createRazorpayOrder,verifyPayment} from "@/lib/api";
+import { loadRazorpay } from "@/utils/loadRazorpay"
 
-    const nights =
-        (new Date(checkOutDate) - new Date(checkInDate)) /
-        (1000 * 60 * 60 * 24);
+// const loadBookingData = async ({
+//     resortId,
+//     checkInDate,
+//     checkOutDate,
+//     selectedRoom,
+//     appliedCoupon
+// }) => {
+//     const hotel = await getHotelDetails(resortId);
 
-    return {
-        hotel: {
-            name: hotel.name,
-            rating: 4.5,              // static for now (no backend field)
-            reviews: 188,             // static for now
-            image: getImageUrl(selectedRoom.image),
-        },
+//     const nights =
+//         (new Date(checkOutDate) - new Date(checkInDate)) /
+//         (1000 * 60 * 60 * 24);
 
-        booking: {
-            checkIn: new Date(checkInDate).toDateString(),
-            nights,
-            roomType: selectedRoom.room_type,
-        },
+//     return {
+//         hotel: {
+//             name: hotel.name,
+//             rating: 4.5,              // static for now (no backend field)
+//             reviews: 188,             // static for now
+//             image: getImageUrl(selectedRoom.image),
+//         },
 
-        pricing: {
-            roomCharge: selectedRoom.price_per_night * nights,
-            instantDiscount: 774,     // frontend logic
-            wizardDiscount: 60,
-            couponDiscount: appliedCoupon ? 500 : 0,
-        },
-    };
-};
+//         booking: {
+//             checkIn: new Date(checkInDate).toDateString(),
+//             nights,
+//             roomType: selectedRoom.room_type,
+//         },
+
+//         pricing: {
+//             roomCharge: selectedRoom.price_per_night * nights,
+//             instantDiscount: 774,     // frontend logic
+//             wizardDiscount: 60,
+//             couponDiscount: appliedCoupon ? 500 : 0,
+//         },
+//     };
+// };
 
 
 
@@ -56,11 +59,16 @@ export default function BookingPage() {
     const [showCouponInput, setShowCouponInput] = useState(false)
     const {id} = useParams();
     const searchParams = useSearchParams()
+    const [bookingAttemptId, setBookingAttemptId] = useState(null)
+    // const [selectedRoom, setSelectedRoom] = useState(null)
+
+const [isPaying, setIsPaying] = useState(false)
 
     const checkInDate = searchParams.get("checkIn")
     const checkOutDate = searchParams.get("checkOut")
     const guests = Number(searchParams.get("guests"))
     const roomType = searchParams.get("roomType")
+    const router = useRouter()
 
     // Guest details form
     const [guestDetails, setGuestDetails] = useState({
@@ -76,13 +84,18 @@ export default function BookingPage() {
     })
 
     const [bookingData, setBookingData] = useState(null);
+    useEffect(() => {
+        const saved = localStorage.getItem("bookingAttemptId")
+        if (saved) setBookingAttemptId(saved)
+    }, [])
+
 
     useEffect(() => {
         if (!id || !checkInDate || !checkOutDate) return
 
         async function init() {
             const hotel = await getHotelDetails(id)
-
+            
             const selectedRoom =
                 hotel.rooms.find(room => room.capacity >= guests) ||
                 hotel.rooms[0]
@@ -192,6 +205,7 @@ export default function BookingPage() {
     }
 
     const handleContinue = () => {
+        
         if (validateGuestDetails()) {
             setCurrentStep(2)
         }
@@ -201,6 +215,155 @@ export default function BookingPage() {
         // Handle booking confirmation
         alert("Booking confirmed!")
     }
+
+//======================bookings
+const handleSelectRooms = async () => {
+    const hotel = await getHotelDetails(id)
+            
+            const selectedRoom =
+                hotel.rooms.find(room => room.capacity >= guests) ||
+                hotel.rooms[0]
+    const res = await selectRooms({
+        resort_id: id,
+        room_ids: [selectedRoom.id],
+        check_in_date: formatDateForAPI(checkInDate),
+        check_out_date: formatDateForAPI(checkOutDate),
+        guests,
+    })
+
+    setBookingAttemptId(res.booking_attempt_id)
+    localStorage.setItem("bookingAttemptId", res.booking_attempt_id)
+}
+
+
+
+const handleAddGuests = async () => {
+    // handleSelectRooms();
+        const hotel = await getHotelDetails(id)
+            
+            const selectedRoom =
+                hotel.rooms.find(room => room.capacity >= guests) ||
+                hotel.rooms[0]
+
+        const res = await selectRooms({
+        resort_id: id,
+        room_ids: [selectedRoom.id],
+        check_in_date: formatDateForAPI(checkInDate),
+        check_out_date: formatDateForAPI(checkOutDate),
+        guests,
+    })
+
+    setBookingAttemptId(res.booking_attempt_id)
+    localStorage.setItem("bookingAttemptId", res.booking_attempt_id)
+    if (!bookingAttemptId) {
+        alert("Booking session expired. Please start again.")
+        return
+    }
+
+    if (!selectedRoom) {
+        alert("Room data not loaded yet. Please wait.")
+        return
+    }
+
+    const guestDetailsList = Array.from({ length: guests }, () => ({
+        room_id: selectedRoom.id,
+        name: guestDetails.name,
+        age: 25,
+    }))
+
+    await addGuestDetails({
+        booking_attempt_id: bookingAttemptId,
+        guests: guestDetailsList,
+    })
+
+    setCurrentStep(2)
+}
+
+
+const handlePayNow = async () => {
+    try {
+        if (!bookingAttemptId) {
+            alert("Booking session expired. Please start again.")
+            return
+        }
+
+        setIsPaying(true)
+
+        // 1️⃣ Load Razorpay SDK
+        const loaded = await loadRazorpay()
+        if (!loaded) {
+            alert("Razorpay SDK failed to load")
+            return
+        }
+
+        // 2️⃣ Create Razorpay order (backend)
+        const orderData = await createRazorpayOrder({
+            booking_attempt_id: bookingAttemptId,
+        })
+
+        /**
+         * Backend returns:
+         * {
+         *   order_id,
+         *   amount,
+         *   currency,
+         *   key,
+         *   booking_attempt_id,
+         *   payment_id
+         * }
+         */
+
+        // 3️⃣ Open Razorpay Checkout
+        const options = {
+            key: orderData.key,
+            amount: orderData.amount,
+            currency: orderData.currency,
+            order_id: orderData.order_id,
+
+            name: bookingData.hotel.name,
+            description: `Booking Attempt #${orderData.booking_attempt_id}`,
+
+            prefill: {
+                name: guestDetails.name,
+                email: guestDetails.email,
+                contact: guestDetails.phone,
+            },
+
+            handler: async function (response) {
+                // 4️⃣ Verify payment
+                const verifyRes = await verifyPayment({
+                    razorpay_order_id: response.razorpay_order_id,
+                    razorpay_payment_id: response.razorpay_payment_id,
+                    razorpay_signature: response.razorpay_signature,
+                })
+
+                if (verifyRes.success) {
+                    localStorage.removeItem("bookingAttemptId")
+                    router.push(`/booking/success/${verifyRes.booking_id}`)
+                } else {
+                    alert("Payment verification failed")
+                }
+            },
+
+            theme: {
+                color: "#0066FF",
+            },
+        }
+
+        const rzp = new window.Razorpay(options)
+
+        rzp.on("payment.failed", () => {
+            alert("Payment failed. You can retry from My Bookings.")
+        })
+
+        rzp.open()
+    } catch (err) {
+        console.error(err)
+        alert(err.message || "Payment failed")
+    } finally {
+        setIsPaying(false)
+    }
+}
 
     return (
         <div className="min-h-screen bg-gray-50">
@@ -312,7 +475,7 @@ export default function BookingPage() {
                                         </div>
 
                                         <Button
-                                            onClick={handleContinue}
+                                            onClick={handleAddGuests}
                                             className="w-full bg-[#0066FF] hover:bg-blue-700 text-white font-semibold py-3 mt-4"
                                         >
                                             Continue to Payment Options
@@ -411,11 +574,19 @@ export default function BookingPage() {
                                             </div>
 
                                             <Button
-                                                onClick={handleConfirmBooking}
+                                                disabled={isPaying}
+                                                onClick={() => {
+                                                    if (paymentMethod === "now") {
+                                                        handlePayNow()
+                                                    } else {
+                                                        handleConfirmBooking()
+                                                    }
+                                                }}
                                                 className="w-full bg-[#0066FF] hover:bg-blue-700 text-white font-semibold py-3 mt-4"
                                             >
-                                                Confirm Reservation
+                                                {isPaying ? "Processing payment..." : "Confirm Reservation"}
                                             </Button>
+
                                         </div>
                                     </div>
                                 </>

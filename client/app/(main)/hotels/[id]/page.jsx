@@ -1,8 +1,9 @@
 "use client"
 
+
 import { useEffect, useState } from "react"
 import { useParams,useSearchParams } from "next/navigation"
-import { getHotelDetails } from "@/lib/api"
+import { getHotelDetails ,getReviewsByResort} from "@/lib/api"
 
 import HotelImageGallery from "@/components/hotel/details/HotelImageGallery"
 import HotelBookingCard from "@/components/hotel/details/HotelBookingCard"
@@ -15,6 +16,7 @@ import HotelReviews from "@/components/hotel/details/HotelReviews"
 export default function HotelDetailsPage({ params }) {
     const { id } = useParams()
     const [hotel, setHotel] = useState(null)
+    const [review,setReview] = useState(null)
     const [loading, setLoading] = useState(true)
     const [error, setError] = useState(null)
 
@@ -26,7 +28,10 @@ export default function HotelDetailsPage({ params }) {
             try {
                 setLoading(true)
                 const data = await getHotelDetails(id)
+                const reviews = await getReviewsByResort(id);
+
                 setHotel(data)
+                setReview(reviews)
             } catch (err) {
                 setError(err.message)
             } finally {
@@ -39,7 +44,14 @@ export default function HotelDetailsPage({ params }) {
 
     if (loading) return <p className="text-center mt-20">Loading hotel…</p>
     if (error) return <p className="text-center mt-20 text-red-600">{error}</p>
-
+        const totalReviews = review.length;
+    const rating =
+        totalReviews > 0
+            ? (
+                  review.reduce((sum, r) => sum + r.rating, 0) /
+                  totalReviews
+              ).toFixed(1)
+            : "0.0";
     // yeh jugad hai cause mujhe backend nahi dekhna tha :)
     const MEDIA_BASE_URL = "http://localhost:8000"
     console.log(hotel.rooms[0]);
@@ -67,8 +79,13 @@ export default function HotelDetailsPage({ params }) {
                         <HotelAmenities amenities={hotel.amenities} />
 
                         {/* THIS feeds real room IDs */}
-                        <HotelRoomSelection rooms={hotel.rooms} />
+                        <HotelRoomSelection rooms={hotel.rooms} mediaBaseUrl ={MEDIA_BASE_URL} />
                         <HotelLocation location = {hotel.location}  coordinates={{ lat: hotel.lat, lng: hotel.lng }}/>
+                                    <HotelReviews
+                rating={rating}
+                totalReviews={totalReviews}
+                reviews={review}
+            />
                     </div>
 
                     {/* RIGHT */}

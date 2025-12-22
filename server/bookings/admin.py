@@ -11,6 +11,7 @@ from .models import (
     FinalBooking,
     BookingRoom,
     BookingGuest,
+    Review
 )
 
 admin.site.register(User)
@@ -33,3 +34,10 @@ class RoomImageInline(admin.StackedInline):
 @admin.register(Room)
 class RoomAdmin(admin.ModelAdmin):
     inlines = [RoomImageInline]
+
+@admin.register(Review)
+class ReviewAdmin(admin.ModelAdmin):
+    list_display = ("id", "user", "resort", "rating", "created_at")
+    list_filter = ("rating", "resort")
+    search_fields = ("user__name", "resort__name", "comment")
+    ordering = ("-created_at",)

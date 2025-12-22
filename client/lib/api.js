@@ -292,3 +292,57 @@ export const verifyPayment = async (data) => {
 
     return handleResponse(response);
 };
+
+
+// ==================== Review APIs ====================
+
+/**
+ * Get reviews for a resort
+ */
+export const getReviewsByResort = async (resortId) => {
+    const response = await fetch(`${API_BASE_URL}/reviews/${resortId}/`, {
+        method: 'GET',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+    });
+
+    return handleResponse(response);
+};
+
+/**
+ * Create a review (authenticated)
+ */
+export const createReview = async (reviewData) => {
+    const token = getAuthToken();
+
+    if (!token) {
+        throw new Error('Login required to submit review');
+    }
+
+    const response = await fetch(`${API_BASE_URL}/reviews/create/`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`,
+        },
+        credentials: 'include',
+        body: JSON.stringify(reviewData),
+    });
+
+    return handleResponse(response);
+};
+
+
+export const getExploreRooms = async () => {
+    const response = await fetch(
+        `${API_BASE_URL}/explore/`,
+        { cache: "no-store" }
+    );
+
+    if (!response.ok) {
+        throw new Error("Failed to load explore rooms");
+    }
+
+    return response.json();
+};

@@ -6,6 +6,8 @@ import Link from "next/link"
 import { MapPin, Wifi } from "lucide-react"
 import { Button } from "@/components/ui/Button"
 import { searchRooms } from "@/lib/api"
+import RoomCard from "@/components/RoomCard"
+
 
 export default function SearchPage() {
 
@@ -68,7 +70,23 @@ export default function SearchPage() {
 
     if (error) {
         return <p className="text-center mt-20 text-red-600">{error}</p>
+
     }
+    const adaptedRooms = results.map((resort) => {
+    const cheapestRoom = resort.available_rooms?.[0];
+
+    return {
+        id: `${resort.resort_id}-${cheapestRoom?.id || "room"}`, // ✅ unique key
+        price_per_night: cheapestRoom?.price_per_night || 0,
+        images: cheapestRoom?.images || [],
+        resort: {
+            id: resort.resort_id,
+            name: resort.resort_name,
+            location: resort.location,
+        },
+    };
+});
+
     console.log(results)
     return (
         <main className="container mx-auto px-4 pt-8 pb-12">
@@ -131,37 +149,12 @@ export default function SearchPage() {
                     </div>
 
 
-                    <div className="space-y-4">
-                        {results.map((resort) => (
-                            <Link
-                                key={resort.resort_id}
-                                href={`/hotels/${resort.resort_id}`}
-                                className="block"
-                            >
-                                <div className="bg-white border rounded-xl shadow-md p-6 hover:shadow-lg transition">
+<div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+    {adaptedRooms.map((room) => (
+        <RoomCard key={room.id} room={room} />
+    ))}
+</div>
 
-                                    <h3 className="text-xl font-bold mb-1">
-                                        {resort.resort_name}
-                                    </h3>
-
-                                    <p className="text-sm text-gray-500 flex items-center mb-3">
-                                        <MapPin className="h-4 w-4 mr-1" />
-                                        {resort.location}
-                                    </p>
-
-                                    <p className="text-sm text-gray-600 mb-2">
-                                        {resort.available_rooms.length} room types available
-                                    </p>
-
-                                    <p className="text-lg font-semibold text-primary">
-                                        Starting from ₹{Math.min(...resort.available_rooms.map(r => r.price_per_night))}
-                                    </p>
-
-                                </div>
-                            </Link>
-                        ))}
-
-                    </div>
                 </div>
             </div>
         </main>

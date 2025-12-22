@@ -11,13 +11,13 @@ export default function MainLayout({ children }) {
 
     // Determine which header to show based on route
     const isBookingPage = pathname?.startsWith('/booking')
-    const isSearchOrHotelPage = pathname?.startsWith('/search') || pathname?.startsWith('/hotels')
+    const isSearchOrHotelPageOrExplore = pathname?.startsWith('/search') || pathname?.startsWith('/hotels') || pathname?.startsWith('/explore')
     const isLandingPage = pathname === '/'
 
     return (
         <div className="flex min-h-screen flex-col">
             {isBookingPage && <BookingHeader />}
-            {isSearchOrHotelPage && <SearchHeader />}
+            {isSearchOrHotelPageOrExplore && <SearchHeader />}
             {isLandingPage && <LandingHeader />}
             <main className="flex-1">
                 {children}

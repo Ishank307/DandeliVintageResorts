@@ -2,8 +2,8 @@
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status
-from .models import Room, Resort, OTP, User, BookingAttempt, BookingAttemptRooms, GuestTemp, Payment, FinalBooking, BookingRoom, BookingGuest
-from .serializers import RoomSerializer
+from .models import Room, Resort, OTP, User, BookingAttempt, BookingAttemptRooms, GuestTemp, Payment, FinalBooking, BookingRoom, BookingGuest,Review
+from .serializers import RoomSerializer, ReviewSerializer
 from django.db.models import Q, Sum
 from datetime import datetime, timedelta
 from rest_framework.decorators import api_view

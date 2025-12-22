@@ -39,7 +39,7 @@ export default function LandingHeader() {
 
                 {/* Right Side Nav - Desktop */}
                 <div className="hidden md:flex items-center gap-6 text-base">
-                    <Link href="/search" className="text-gray-700 hover:text-gray-900 transition-colors">
+                    <Link href="/explore" className="text-gray-700 hover:text-gray-900 transition-colors">
                         Explore
                     </Link>
                     <a href="tel:+1234567890" className="flex items-center gap-2 text-gray-700 hover:text-primary transition-colors">
