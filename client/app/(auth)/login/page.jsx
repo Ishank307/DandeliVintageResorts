@@ -137,8 +137,10 @@ export default function LoginPage() {
             {/* Header */}
             <header className="w-full px-6 py-4 sm:px-10 relative z-10">
                 <nav className="flex items-center justify-between">
-                    <Link href="/" className="text-xl font-bold text-white drop-shadow-lg">
-                        Vintage Resorts
+                    <Link href="/" className="flex flex-col items-start">
+                        <span className="text-xl sm:text-2xl font-bold text-white drop-shadow-lg">Vintza</span>
+                        <span className="text-xs text-white/90 drop-shadow-md">By Vintage Resorts</span>
+                        <div className="h-0.5 w-full bg-yellow-500 mt-0.5"></div>
                     </Link>
                     <div className="flex items-center space-x-6">
                         <Link href="/" className="hidden sm:block text-sm font-medium text-white/90 hover:text-white drop-shadow-md">
