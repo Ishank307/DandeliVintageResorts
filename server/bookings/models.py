@@ -54,7 +54,7 @@ class OTP(models.Model):
 
     @staticmethod
     def generate_otp():
-        return str(random.randint(100000, 999999))
+        return str(random.randint(1000, 9999)).zfill(4)
 
     def __str__(self):
         return f"{self.phone_number} - {self.code}"
