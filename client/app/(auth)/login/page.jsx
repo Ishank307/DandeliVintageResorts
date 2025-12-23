@@ -11,7 +11,7 @@ export default function LoginPage() {
     const router = useRouter()
     const { sendOTP, login } = useAuth()
     const [phone, setPhone] = useState("")
-    const [otp, setOtp] = useState(["", "", "", "", "", ""])
+    const [otp, setOtp] = useState(["", "", "", ""])
     const [isOtpSent, setIsOtpSent] = useState(false)
     const [isLoading, setIsLoading] = useState(false)
     const [isVerifying, setIsVerifying] = useState(false)
@@ -50,7 +50,7 @@ export default function LoginPage() {
         newOtp[index] = value
         setOtp(newOtp)
 
-        if (value && index < 5) {
+        if (value && index < 3) {
             otpInputRefs.current[index + 1]?.focus()
         }
     }
@@ -58,6 +58,17 @@ export default function LoginPage() {
     const handleKeyDown = (index, e) => {
         if (e.key === "Backspace" && !otp[index] && index > 0) {
             otpInputRefs.current[index - 1]?.focus()
+        }
+    }
+
+    const handlePaste = (e) => {
+        e.preventDefault()
+        const pastedData = e.clipboardData.getData('text').replace(/\D/g, '').slice(0, 4)
+
+        if (pastedData.length === 4) {
+            const newOtp = pastedData.split('')
+            setOtp(newOtp)
+            otpInputRefs.current[3]?.focus()
         }
     }
 
@@ -89,7 +100,7 @@ export default function LoginPage() {
 
     const handleResendOtp = async () => {
         setError("")
-        setOtp(["", "", "", "", "", ""])
+        setOtp(["", "", "", ""])
         setIsLoading(true)
 
         try {
@@ -198,10 +209,10 @@ export default function LoginPage() {
                                 {/* OTP Input */}
                                 {isOtpSent && (
                                     <div>
-                                        <label htmlFor="otp" className="block text-sm font-medium text-white drop-shadow-md">
+                                        <label htmlFor="otp" className="block text-sm font-medium text-white drop-shadow-md text-center">
                                             One-Time Password (OTP)
                                         </label>
-                                        <div className="flex justify-between mt-1 space-x-2">
+                                        <div className="flex justify-center mt-1 space-x-3">
                                             {otp.map((digit, index) => (
                                                 <input
                                                     key={index}
@@ -211,7 +222,8 @@ export default function LoginPage() {
                                                     value={digit}
                                                     onChange={(e) => handleOtpChange(index, e.target.value)}
                                                     onKeyDown={(e) => handleKeyDown(index, e)}
-                                                    className="w-full h-12 text-center text-lg font-semibold bg-white/90 backdrop-blur-sm border rounded-lg border-white/30 focus:outline-none focus:ring-2 focus:ring-white/50 focus:border-white sm:text-xl"
+                                                    onPaste={index === 0 ? handlePaste : undefined}
+                                                    className="w-20 h-14 text-center text-lg font-semibold bg-white/90 backdrop-blur-sm border rounded-lg border-white/30 focus:outline-none focus:ring-2 focus:ring-white/50 focus:border-white sm:text-xl"
                                                 />
                                             ))}
                                         </div>
@@ -250,12 +262,9 @@ export default function LoginPage() {
                             )}
                         </form>
 
-                        {/* Sign Up Link */}
-                        <p className="mt-8 text-sm text-center text-white/90 drop-shadow-md">
-                            Don't have an account?{" "}
-                            <Link href="/register" className="font-medium text-white hover:text-white/80 underline">
-                                Sign up
-                            </Link>
+                        {/* Info Note */}
+                        <p className="mt-8 text-xs text-center text-white/80 drop-shadow-md">
+                            New user? You'll be automatically registered when you verify your OTP.
                         </p>
                     </div>
                 </div>
