@@ -281,6 +281,7 @@ class CreateRazorpayOrderView(APIView):
 
     def post(self, request):
         booking_attempt_id = request.data.get("booking_attempt_id")
+        payment_type = request.data.get("payment_type", "full")
 
         if not booking_attempt_id:
             return Response({"error": "Missing booking_attempt_id"}, status=status.HTTP_400_BAD_REQUEST)
@@ -291,7 +292,7 @@ class CreateRazorpayOrderView(APIView):
             return Response({"error": "Invalid booking_attempt_id"}, status=status.HTTP_404_NOT_FOUND)
 
         # Calculate total amount
-        total_price = 0
+        total_price = Decimal(0)
         attempt_rooms = BookingAttemptRooms.objects.filter(attempt=booking_attempt)
         duration = (booking_attempt.check_out - booking_attempt.check_in).days
         for attempt_room in attempt_rooms:
@@ -299,12 +300,17 @@ class CreateRazorpayOrderView(APIView):
         
         if total_price <= 0:
             return Response({"error": "Calculated amount must be greater than zero."}, status=status.HTTP_400_BAD_REQUEST)
+        
+        amount_to_pay = total_price
+        if payment_type == 'partial':
+             percentage = Decimal(settings.PARTIAL_PAYMENT_PERCENTAGE) / Decimal(100)
+             amount_to_pay = total_price * percentage
 
         client = razorpay.Client(auth=(settings.RAZORPAY_KEY_ID, settings.RAZORPAY_KEY_SECRET))
 
         # Razorpay expects amount in paise
         razorpay_order = client.order.create({
-            "amount": int(total_price) * 100,
+            "amount": int(amount_to_pay * 100),
             "currency": "INR",
             "receipt": f"booking_{booking_attempt.id}",
             "payment_capture": 1
@@ -313,7 +319,8 @@ class CreateRazorpayOrderView(APIView):
         # Create a payment record
         payment = Payment.objects.create(
             attempt=booking_attempt,
-            amount=total_price,
+            amount=amount_to_pay,
+            type=payment_type,
             provider="Razorpay",
             provider_payment_id=razorpay_order["id"], # Store Razorpay Order ID
             status="initiated",
@@ -453,18 +460,30 @@ class MyBookingsView(APIView):
     permission_classes = [IsAuthenticated]
 
     def get(self, request):
-        bookings = FinalBooking.objects.filter(user=request.user).order_by('-created_at')
+        bookings = (
+            FinalBooking.objects
+            .filter(user=request.user)
+            .select_related("resort", "payment")
+            .prefetch_related(
+                "bookingroom_set__room"
+            )
+            .order_by("-created_at")
+        )
+
         booking_list = []
+
         for booking in bookings:
-            rooms = BookingRoom.objects.filter(booking=booking)
-            room_data = RoomSerializer([br.room for br in rooms], many=True).data
+            rooms = [br.room for br in booking.bookingroom_set.all()]
+            room_data = RoomSerializer(rooms, many=True).data
+
             booking_list.append({
-                'booking_id': booking.id,
-                'resort_name': booking.resort.name,
-                'check_in': booking.check_in,
-                'check_out': booking.check_out,
-                'status': booking.status,
-                'rooms': room_data,
-                'payment_status': booking.payment.status if booking.payment else 'N/A'
+                "booking_id": booking.id,
+                "resort_name": booking.resort.name if booking.resort else None,
+                "check_in": booking.check_in,
+                "check_out": booking.check_out,
+                "status": booking.status,
+                "rooms": room_data,
+                "payment_status": getattr(booking.payment, "status", "N/A"),
             })
+
         return Response(booking_list, status=status.HTTP_200_OK)

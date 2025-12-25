@@ -123,7 +123,13 @@ class Payment(models.Model):
         ('success', 'Success'),
         ('failed', 'Failed'),
     )
+    
+    TYPE_CHOICES = (
+        ('partial', 'Partial'),
+        ('full', 'Full'),
+    )
     attempt = models.ForeignKey(BookingAttempt, on_delete=models.CASCADE)
+    type = models.CharField(max_length=50, choices=TYPE_CHOICES)
     amount = models.DecimalField(max_digits=10, decimal_places=2)
     provider = models.CharField(max_length=50)
     provider_payment_id = models.CharField(max_length=100)

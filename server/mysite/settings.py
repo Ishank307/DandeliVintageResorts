@@ -153,7 +153,7 @@ RAZORPAY_KEY_SECRET = os.environ.get('RAZORPAY_KEY_SECRET','BwcZyfZ5STiN1M7A6I2u
 # RAZORPAY_WEBHOOK_SECRET = os.environ.get('RAZORPAY_WEBHOOK_SECRET')
 
 # Partial Payment Configuration
-PARTIAL_PAYMENT_PERCENTAGE = 30 # Percentage of total amount for partial payment
+PARTIAL_PAYMENT_PERCENTAGE = 25 # Percentage of total amount for partial payment
 
 # CORS Settings
 CORS_ALLOWED_ORIGINS = [
