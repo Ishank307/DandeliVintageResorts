@@ -445,3 +445,26 @@ class ReviewListView(APIView):
         reviews = Review.objects.filter(resort_id=pk)
         serializer = ReviewSerializer(reviews, many=True)
         return Response(serializer.data)
+    
+    
+    
+    
+class MyBookingsView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        bookings = FinalBooking.objects.filter(user=request.user).order_by('-created_at')
+        booking_list = []
+        for booking in bookings:
+            rooms = BookingRoom.objects.filter(booking=booking)
+            room_data = RoomSerializer([br.room for br in rooms], many=True).data
+            booking_list.append({
+                'booking_id': booking.id,
+                'resort_name': booking.resort.name,
+                'check_in': booking.check_in,
+                'check_out': booking.check_out,
+                'status': booking.status,
+                'rooms': room_data,
+                'payment_status': booking.payment.status if booking.payment else 'N/A'
+            })
+        return Response(booking_list, status=status.HTTP_200_OK)

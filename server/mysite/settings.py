@@ -148,9 +148,9 @@ MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
 # Razorpay Configuration
-RAZORPAY_KEY_ID = os.environ.get('RAZORPAY_KEY_ID')
-RAZORPAY_KEY_SECRET = os.environ.get('RAZORPAY_KEY_SECRET')
-RAZORPAY_WEBHOOK_SECRET = os.environ.get('RAZORPAY_WEBHOOK_SECRET')
+RAZORPAY_KEY_ID = os.environ.get('RAZORPAY_KEY_ID','rzp_test_RuBkrTOjZ0lKNn')
+RAZORPAY_KEY_SECRET = os.environ.get('RAZORPAY_KEY_SECRET','BwcZyfZ5STiN1M7A6I2uRiQv')
+# RAZORPAY_WEBHOOK_SECRET = os.environ.get('RAZORPAY_WEBHOOK_SECRET')
 
 # Partial Payment Configuration
 PARTIAL_PAYMENT_PERCENTAGE = 30 # Percentage of total amount for partial payment

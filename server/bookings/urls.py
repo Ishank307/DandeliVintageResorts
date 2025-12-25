@@ -12,6 +12,8 @@ from .views import (
     ReviewCreateView,
     ReviewListView,
     ExploreView,
+    MyBookingsView
+    
 )
 
 urlpatterns = [
@@ -27,5 +29,5 @@ urlpatterns = [
     path('explore/', ExploreView.as_view(), name='explore'),
     path('reviews/create/', ReviewCreateView.as_view(), name='review-create'),
     path('reviews/<int:pk>/', ReviewListView.as_view(), name='review-list'),
-    
+    path('my-bookings/', MyBookingsView.as_view(), name='my-bookings'),
 ]
