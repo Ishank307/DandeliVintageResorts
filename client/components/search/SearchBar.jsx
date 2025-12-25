@@ -9,25 +9,37 @@ import { useState } from "react"
 import { useRouter } from "next/navigation"
 import { format, addDays } from "date-fns"
 
+import { useSearchParams } from "next/navigation"
+import { parseISO } from "date-fns"
+
+
 export default function SearchBar() {
     const router = useRouter()
+    const searchParams = useSearchParams()
+    
+        // Popover states
+        const [showLocation, setShowLocation] = useState(false)
+        const [showDates, setShowDates] = useState(false)
+        const [showGuests, setShowGuests] = useState(false)
+    const [location, setLocation] = useState(
+    searchParams.get("location") || "Dandeli, Karnataka, India"
+    )
 
-    const [location, setLocation] = useState("Dandeli, Karnataka, India")
+    const [checkInDate, setCheckInDate] = useState(
+    searchParams.get("check_in")
+        ? parseISO(searchParams.get("check_in"))
+        : new Date()
+    )
 
-    // Popover states
-    const [showLocation, setShowLocation] = useState(false)
-    const [showDates, setShowDates] = useState(false)
-    const [showGuests, setShowGuests] = useState(false)
+    const [checkOutDate, setCheckOutDate] = useState(
+    searchParams.get("check_out")
+        ? parseISO(searchParams.get("check_out"))
+        : addDays(new Date(), 1)
+    )
 
-    // Default dates
-    const defaultCheckIn = new Date()
-    const defaultCheckOut = addDays(new Date(), 1)
-
-    const [checkInDate, setCheckInDate] = useState(defaultCheckIn)
-    const [checkOutDate, setCheckOutDate] = useState(defaultCheckOut)
-
-    // Rooms
-    const [rooms, setRooms] = useState([{ guests: 2 }])
+    const [rooms, setRooms] = useState([
+    { guests: Number(searchParams.get("guests")) || 2 },
+    ])
 
     const handleSearch = (e) => {
         e.preventDefault()

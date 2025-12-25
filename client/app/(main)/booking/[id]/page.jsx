@@ -237,47 +237,60 @@ const handleSelectRooms = async () => {
 
 
 
+
 const handleAddGuests = async () => {
-    // handleSelectRooms();
-        const hotel = await getHotelDetails(id)
-            
-            const selectedRoom =
-                hotel.rooms.find(room => room.capacity >= guests) ||
-                hotel.rooms[0]
+  // 🚫 STOP immediately if details are invalid
+  if (!validateGuestDetails()) {
+    return;
+  }
 
-        const res = await selectRooms({
-        resort_id: id,
-        room_ids: [selectedRoom.id],
-        check_in_date: formatDateForAPI(checkInDate),
-        check_out_date: formatDateForAPI(checkOutDate),
-        guests,
-    })
+  const hotel = await getHotelDetails(id);
 
-    setBookingAttemptId(res.booking_attempt_id)
-    localStorage.setItem("bookingAttemptId", res.booking_attempt_id)
-    if (!bookingAttemptId) {
-        alert("Booking session expired. Please start again.")
-        return
-    }
+  if (!hotel?.rooms?.length) {
+    alert("Room data not loaded yet. Please wait.");
+    return;
+  }
 
-    if (!selectedRoom) {
-        alert("Room data not loaded yet. Please wait.")
-        return
-    }
+  const selectedRoom =
+    hotel.rooms.find(room => room.capacity >= guests) ||
+    hotel.rooms[0];
 
-    const guestDetailsList = Array.from({ length: guests }, () => ({
-        room_id: selectedRoom.id,
-        name: guestDetails.name,
-        age: 25,
-    }))
+  if (!selectedRoom) {
+    alert("No suitable room found.");
+    return;
+  }
 
-    await addGuestDetails({
-        booking_attempt_id: bookingAttemptId,
-        guests: guestDetailsList,
-    })
+  const res = await selectRooms({
+    resort_id: id,
+    room_ids: [selectedRoom.id],
+    check_in_date: formatDateForAPI(checkInDate),
+    check_out_date: formatDateForAPI(checkOutDate),
+    guests,
+  });
 
-    setCurrentStep(2)
-}
+  const attemptId = res.booking_attempt_id;
+  setBookingAttemptId(attemptId);
+  localStorage.setItem("bookingAttemptId", attemptId);
+
+  if (!attemptId) {
+    alert("Booking session expired. Please start again.");
+    return;
+  }
+
+  const guestDetailsList = Array.from({ length: guests }, () => ({
+    room_id: selectedRoom.id,
+    name: guestDetails.name,
+    age: 25,
+  }));
+
+  await addGuestDetails({
+    booking_attempt_id: attemptId,
+    guests: guestDetailsList,
+  });
+
+  setCurrentStep(2);
+};
+
 
 
 const handlePayNow = async () => {
