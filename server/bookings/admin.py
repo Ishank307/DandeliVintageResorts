@@ -24,6 +24,7 @@ admin.site.register(Payment)
 admin.site.register(FinalBooking)
 admin.site.register(BookingRoom)
 admin.site.register(BookingGuest)
+# admin.site.register(Review)
 
 class RoomImageInline(admin.StackedInline):
     model = RoomImage
