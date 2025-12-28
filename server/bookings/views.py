@@ -16,6 +16,9 @@ import razorpay
 from django.conf import settings
 from django.views.decorators.csrf import csrf_exempt
 import json
+from django.core.mail import send_mail
+from bookings.tasks import send_invoice_email_enqueue
+
 
 # Request OTP
 @api_view(['POST'])
@@ -27,7 +30,13 @@ def request_otp(request):
     otp_code = OTP.generate_otp()
     OTP.objects.create(phone_number=phone, code=otp_code)
 
-    # TODO: integrate SMS API (Twilio, MSG91, etc.)
+    send_mail(
+        subject="Your OTP Code",
+        message=f"Your OTP code is {otp_code}",
+        from_email=settings.DEFAULT_FROM_EMAIL,
+        recipient_list=[phone],  # Replace with actual SMS gateway email
+        fail_silently=False,
+    )
     
     print(f"🔐 OTP for {phone} is {otp_code}")  # For now: print in console
 
@@ -398,7 +407,10 @@ class VerifyPaymentView(APIView):
                     age=guest_temp.age
                 )
             booking_attempt.status = 'completed'
+            
+            
             booking_attempt.save()
+            send_invoice_email_enqueue(final_booking)
             # TODO: Add a task to send booking confirmation emails
             # send_booking_emails_task.delay(final_booking.id)
             return Response({

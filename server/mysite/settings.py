@@ -13,9 +13,11 @@ https://docs.djangoproject.com/en/5.0/ref/settings/
 from pathlib import Path
 from datetime import timedelta
 import os
+from dotenv import load_dotenv
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
+load_dotenv(BASE_DIR / ".env")
 
 
 # Quick-start development settings - unsuitable for production
@@ -49,6 +51,7 @@ INSTALLED_APPS = [
     'bookings',
     'rest_framework',
     'corsheaders',
+    'background_task'
 ]
 
 MIDDLEWARE = [
@@ -161,3 +164,25 @@ CORS_ALLOWED_ORIGINS = [
     "http://127.0.0.1:3000",
 ]
 CORS_ALLOW_CREDENTIALS = True
+
+
+
+
+EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
+EMAIL_HOST = 'smtp.gmail.com'
+EMAIL_PORT = 587
+EMAIL_USE_TLS = True
+EMAIL_HOST_USER = os.environ.get('EMAIL_HOST_USER', 'vintzaresorts@gmail.com')
+EMAIL_HOST_PASSWORD = os.environ.get('EMAIL_HOST_PASSWORD')
+DEFAULT_FROM_EMAIL = EMAIL_HOST_USER
+
+
+
+print("🔑 Razorpay Key ID:", RAZORPAY_KEY_ID)
+print("🔑 Razorpay Key Secret:", RAZORPAY_KEY_SECRET)
+print("🔑 Razorpay Webhook Secret:", RAZORPAY_WEBHOOK_SECRET)
+
+
+print("📧 Email Host User:", EMAIL_HOST_USER)
+print("📧 Email Host Password:", EMAIL_HOST_PASSWORD)
+
