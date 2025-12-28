@@ -18,7 +18,9 @@ from django.views.decorators.csrf import csrf_exempt
 import json
 from django.core.mail import send_mail
 from bookings.tasks import send_invoice_email_enqueue
-
+import logging
+import traceback
+logger = logging.getLogger(__name__)
 
 # Request OTP
 @api_view(['POST'])
@@ -30,13 +32,13 @@ def request_otp(request):
     otp_code = OTP.generate_otp()
     OTP.objects.create(phone_number=phone, code=otp_code)
 
-    send_mail(
-        subject="Your OTP Code",
-        message=f"Your OTP code is {otp_code}",
-        from_email=settings.DEFAULT_FROM_EMAIL,
-        recipient_list=[phone],  # Replace with actual SMS gateway email
-        fail_silently=False,
-    )
+    # send_mail(
+    #     subject="Your OTP Code",
+    #     message=f"Your OTP code is {otp_code}",
+    #     from_email=settings.DEFAULT_FROM_EMAIL,
+    #     recipient_list=[phone],  # Replace with actual SMS gateway email
+    #     fail_silently=False,
+    # )
     
     print(f"🔐 OTP for {phone} is {otp_code}")  # For now: print in console
 
@@ -139,7 +141,8 @@ class HotelDetailView(APIView):
             'amenities': resort.aminities,
             'rooms': serializer.data,
             'lat' :resort.lat,
-            'lng': resort.lng
+            'lng': resort.lng,
+            'contact_number':resort.contact_number,
         }
 
         return Response(resort_data, status=status.HTTP_200_OK)
@@ -363,48 +366,89 @@ class CreateRazorpayOrderView(APIView):
 
 
 
-
-
-
 class VerifyPaymentView(APIView):
     permission_classes = [IsAuthenticated]
 
     def post(self, request):
-        data = request.data
-        order_id = data.get("razorpay_order_id")
-        payment_id = data.get("razorpay_payment_id")
-        signature = data.get("razorpay_signature")
-
-        if not all([order_id, payment_id, signature]):
-            return Response(
-                {"error": "Incomplete payment data."},
-                status=status.HTTP_400_BAD_REQUEST
-            )
-
-        client = razorpay.Client(auth=(settings.RAZORPAY_KEY_ID, settings.RAZORPAY_KEY_SECRET))
-        params_dict = {
-            "razorpay_order_id": order_id,
-            "razorpay_payment_id": payment_id,
-            "razorpay_signature": signature
-        }
-
         try:
-            # Verify signature
-            client.utility.verify_payment_signature(params_dict)
+            data = request.data
+            order_id = data.get("razorpay_order_id")
+            payment_id = data.get("razorpay_payment_id")
+            signature = data.get("razorpay_signature")
 
-            # Fetch and update payment & booking
+            logger.info(f"Verifying payment for order: {order_id}")
+
+            # Validate input
+            if not all([order_id, payment_id, signature]):
+                return Response({
+                    "success": False,
+                    "error": "INCOMPLETE_DATA",
+                    "message": "Payment information is incomplete"
+                }, status=status.HTTP_400_BAD_REQUEST)
+
+            # Initialize Razorpay client
+            client = razorpay.Client(auth=(
+                settings.RAZORPAY_KEY_ID, 
+                settings.RAZORPAY_KEY_SECRET
+            ))
+            
+            params_dict = {
+                "razorpay_order_id": order_id,
+                "razorpay_payment_id": payment_id,
+                "razorpay_signature": signature
+            }
+
+            # Verify signature
+            try:
+                client.utility.verify_payment_signature(params_dict)
+                logger.info("Payment signature verified successfully")
+            except razorpay.errors.SignatureVerificationError:
+                logger.error("Payment signature verification failed")
+                return Response({
+                    "success": False,
+                    "error": "SIGNATURE_INVALID",
+                    "message": "Payment verification failed. Please contact support if amount was deducted."
+                }, status=status.HTTP_400_BAD_REQUEST)
+
+            # Fetch payment record
             payment = Payment.objects.filter(provider_payment_id=order_id).first()
             if not payment:
-                return Response({"error": "Payment record not found."}, status=status.HTTP_404_NOT_FOUND)
+                logger.error(f"Payment record not found for order: {order_id}")
+                return Response({
+                    "success": False,
+                    "error": "PAYMENT_NOT_FOUND",
+                    "message": "Payment record not found. Please contact support."
+                }, status=status.HTTP_404_NOT_FOUND)
             
-            # Check if booking attempt belongs to the user
+            # Check if already processed
+            if payment.status == 'success':
+                logger.warning(f"Payment already processed: {order_id}")
+                # Find existing booking
+                existing_booking = FinalBooking.objects.filter(payment=payment).first()
+                if existing_booking:
+                    return Response({
+                        "success": True,
+                        "message": "Payment already verified",
+                        "booking_id": str(existing_booking.id),
+                        "already_processed": True
+                    }, status=status.HTTP_200_OK)
+            
+            # Check user authorization
             booking_attempt = payment.attempt
             if booking_attempt.user != request.user:
-                return Response({"error": "Booking does not belong to the authenticated user."}, status=status.HTTP_403_FORBIDDEN)
+                logger.warning(f"Unauthorized verification attempt by user {request.user.id}")
+                return Response({
+                    "success": False,
+                    "error": "UNAUTHORIZED",
+                    "message": "This payment does not belong to you"
+                }, status=status.HTTP_403_FORBIDDEN)
+            
+            # Update payment status
             payment.status = 'success'
             payment.save()
+            logger.info(f"Payment status updated: {payment.id}")
             
-            # Finalize the booking
+            # Create final booking
             final_booking = FinalBooking.objects.create(
                 user=booking_attempt.user,
                 resort=booking_attempt.resort,
@@ -413,11 +457,16 @@ class VerifyPaymentView(APIView):
                 status='confirmed' if payment.type == 'full' else 'pending',
                 payment=payment
             )
-            print(1)
-            for attempt_room in BookingAttemptRooms.objects.filter(attempt=booking_attempt):
-                BookingRoom.objects.create(booking=final_booking, room=attempt_room.room)
+            logger.info(f"Final booking created: {final_booking.id}")
             
-            print(2)
+            # Create booking rooms
+            for attempt_room in BookingAttemptRooms.objects.filter(attempt=booking_attempt):
+                BookingRoom.objects.create(
+                    booking=final_booking, 
+                    room=attempt_room.room
+                )
+            
+            # Create booking guests
             for guest_temp in GuestTemp.objects.filter(attempt=booking_attempt):
                 BookingGuest.objects.create(
                     booking=final_booking,
@@ -425,37 +474,42 @@ class VerifyPaymentView(APIView):
                     name=guest_temp.name,
                     age=guest_temp.age
                 )
-            print(3)
+            
+            # Update booking attempt
             booking_attempt.status = 'completed'
-            
-            
-            print(4)
             booking_attempt.save()
-            print(4.5)
-            send_invoice_email_enqueue(final_booking.id)
-            # TODO: Add a task to send booking confirmation emails
-            # send_booking_emails_task.delay(final_booking.id)
-            print(5)
+            
+            # Send invoice (non-blocking)
+            try:
+                # send_invoice_email_enqueue(final_booking)
+                pass
+            except Exception as e:
+                logger.error(f"Failed to send invoice: {str(e)}")
+            
             return Response({
                 "success": True,
                 "message": "Payment verified successfully",
-                "booking_id": final_booking.id
-            })
-            print(6)
-        except razorpay.errors.SignatureVerificationError:
-            return Response(
-                {"success": False, "message": "Payment verification failed"},
-                status=status.HTTP_400_BAD_REQUEST
-            )
+                "booking_id": str(final_booking.id),
+                "booking_details": {
+                    "resort_name": booking_attempt.resort.name,
+                    "resort_id": booking_attempt.resort.id,
+                    "check_in": booking_attempt.check_in.strftime('%Y-%m-%d'),
+                    "check_out": booking_attempt.check_out.strftime('%Y-%m-%d'),
+                    "status": final_booking.status,
+                    "payment_type": payment.type
+                }
+            }, status=status.HTTP_200_OK)
+            
         except Exception as e:
-            # Generic error for any other issues
-            print(f"Error during payment verification: {str(e)}")
-            return Response(
-                {"success": False, "message": f"An unexpected error occurred: {str(e)}"},
-                status=status.HTTP_500_INTERNAL_SERVER_ERROR
-            )
-
-
+            logger.error(f"Unexpected error in payment verification: {str(e)}")
+            logger.error(traceback.format_exc())
+            return Response({
+                "success": False,
+                "error": "SERVER_ERROR",
+                "message": "An unexpected error occurred. Please contact support.",
+                "details": str(e) if settings.DEBUG else None
+            }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+        
 class ExploreView(APIView):
     permission_classes = [AllowAny]
 

@@ -6,6 +6,10 @@ import { useRouter, useSearchParams } from "next/navigation"
 import { useState } from "react"
 import { parseISO,addDays } from "date-fns"
 export default function RoomCard({ room, context = "search" }) {
+  const MEDIA_BASE_URL = "http://localhost:8000"
+   const imageUrl = room.images?.[0]?.image
+    ? `${MEDIA_BASE_URL}${room.images[0].image}`
+    : "/placeholder-room.jpg"
 
   const router = useRouter()
   const searchParams = useSearchParams()
@@ -38,18 +42,7 @@ const handleNavigate = () => {
 }
 
 
-//   if (!room.isAvailable) {
-//   return (
-//     <div className="text-center mt-24">
-//       <h2 className="text-xl font-bold">
-//         This resort is fully booked
-//       </h2>
-//       <p className="text-gray-500 mt-2">
-//         Please choose different dates or another stay
-//       </p>
-//     </div>
-//   )
-// }
+
 
 
   return (
@@ -71,9 +64,9 @@ const handleNavigate = () => {
 
   {/* IMAGE */}
 <div className="relative w-60 self-stretch rounded-xl overflow-hidden bg-slate-200 shrink-0">
-    {room.images?.[0]?.image && (
+    {imageUrl && (
       <Image
-        src={room.images[0].image}
+        src={imageUrl}
         alt={room.resort.name}
         fill
         className="object-cover"
@@ -140,17 +133,7 @@ const handleNavigate = () => {
     </div>
 
     <div className="flex gap-3 mt-4">
-      {/* <button
-        onClick={(e) => {
-          e.stopPropagation()
-          handleNavigate()
-        }}
-        className="px-4 py-2 rounded-md text-sm font-semibold
-                   border border-slate-300 text-slate-700
-                   hover:bg-slate-100"
-      >
-        View Details
-      </button> */}
+    
 
 {isAvailable ? (
   <button

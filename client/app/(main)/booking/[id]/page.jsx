@@ -7,6 +7,7 @@ import { ChevronLeft, Lock, Phone, Calendar, User, Tag } from "lucide-react"
 import { Button } from "@/components/ui/Button"
 import { Input } from "@/components/ui/Input"
 import { useParams, useSearchParams } from "next/navigation"
+import toast from "react-hot-toast"
 
 import { useRouter } from "next/navigation"
 
@@ -16,24 +17,27 @@ import { useAuth } from "@/context/AuthContext"
 
 
 export default function BookingPage() {
-    const { user } = useAuth() // Check if user is logged in
-    const [currentStep, setCurrentStep] = useState(1) // 1 = Guest Details, 2 = Payment Options
+    const [currentStep, setCurrentStep] = useState(1)
     const [paymentMethod, setPaymentMethod] = useState("property")
     const [couponCode, setCouponCode] = useState("")
     const [appliedCoupon, setAppliedCoupon] = useState(null)
     const [showCouponInput, setShowCouponInput] = useState(false)
-    const { id } = useParams();
+    const {id} = useParams();
     const searchParams = useSearchParams()
     const [bookingAttemptId, setBookingAttemptId] = useState(null)
-    // const [selectedRoom, setSelectedRoom] = useState(null)
 
     const [isPaying, setIsPaying] = useState(false)
 
     const checkInDate = searchParams.get("checkIn")
     const checkOutDate = searchParams.get("checkOut")
     const guests = Number(searchParams.get("guests"))
-    // const roomType = searchParams.get("roomType")
-    const roomId = Number(searchParams.get("room_id"))
+  const { user } = useAuth()  // Add this line to get the user
+
+    // 🔑 UPDATED: Parse multiple room IDs from comma-separated string
+    const roomIdsParam = searchParams.get("room_ids")
+    const roomIds = roomIdsParam 
+        ? roomIdsParam.split(',').map(id => Number(id)).filter(id => !isNaN(id))
+        : []
 
     const router = useRouter()
 
@@ -49,58 +53,82 @@ export default function BookingPage() {
         email: "",
         phone: ""
     })
-    const PARTIAL_PERCENTAGE = 20 // Must match Django settings
-    // const [paymentMethod, setPaymentMethod] = useState("property") // property | now
-    const [payNowType, setPayNowType] = useState("full") // full | partial
+
+    const PARTIAL_PERCENTAGE = 25
+    const [payNowType, setPayNowType] = useState("full")
     const [bookingData, setBookingData] = useState(null);
-    useEffect(() => {
-        const saved = localStorage.getItem("bookingAttemptId")
-        if (saved) setBookingAttemptId(saved)
-    }, [])
 
+useEffect(() => {
+    const saved = localStorage.getItem("bookingAttemptId")
+    if (saved) setBookingAttemptId(saved)
+}, [])
 
-    useEffect(() => {
-        if (!id || !checkInDate || !checkOutDate) return
+// 🔑 UPDATED: Handle multiple rooms
+useEffect(() => {
+    if (!id || !checkInDate || !checkOutDate || roomIds.length === 0) return
 
-        async function init() {
-            const hotel = await getHotelDetails(id)
+    async function init() {
+        const hotel = await getHotelDetails(id)
+        console.log(hotel)
+        // 🔑 Find all selected rooms
+        const selectedRooms = hotel.rooms.filter(
+            room => roomIds.includes(room.id)
+        )
 
-            const selectedRoom = hotel.rooms.find(
-                room => room.id === roomId
-            )
-
-            if (!selectedRoom) {
-                alert("Selected room is no longer available.")
-                router.push(`/hotels/${id}`)
-                return
-            }
-
-
-            const nights =
-                (new Date(checkOutDate) - new Date(checkInDate)) /
-                (1000 * 60 * 60 * 24)
-
-            setBookingData({
-                hotel: {
-                    name: hotel.name,
-                    rating: 4.5,
-                    reviews: 188,
-                    image: getImageUrl(selectedRoom.images[0]?.image),
-                },
-                booking: {
-                    checkIn: new Date(checkInDate).toDateString(),
-                    nights,
-                    roomType: `Room ${selectedRoom.room_number}`,
-                    guests,
-                },
-                pricing: {
-                    roomCharge: Number(selectedRoom.price_per_night) * nights,
-                    instantDiscount: 774,
-                    wizardDiscount: 60,
-                    couponDiscount: appliedCoupon ? 500 : 0,
-                },
-            })
+        if (selectedRooms.length === 0) {
+            alert("Selected rooms are no longer available.")
+            router.push(`/hotels/${id}`)
+            return
         }
+
+        // 🔑 Verify we got all requested rooms
+        if (selectedRooms.length !== roomIds.length) {
+            alert("Some selected rooms are no longer available.")
+            router.push(`/hotels/${id}`)
+            return
+        }
+
+        const nights =
+            (new Date(checkOutDate) - new Date(checkInDate)) /
+            (1000 * 60 * 60 * 24)
+
+        // 🔑 Calculate total room charge from all selected rooms
+        const totalRoomCharge = selectedRooms.reduce(
+            (sum, room) => sum + (Number(room.price_per_night) * nights),
+            0
+        )
+
+        // 🔑 Get first room's image for display (or you could show all)
+        const primaryRoomImage = getImageUrl(selectedRooms[0].images[0]?.image)
+
+        // 🔑 Create room type description
+        const roomTypeDescription = selectedRooms.length === 1
+            ? `Room ${selectedRooms[0].room_number}`
+            : `${selectedRooms.length} Rooms (${selectedRooms.map(r => r.room_number).join(', ')})`
+
+        setBookingData({
+            hotel: {
+                name: hotel.name,
+                rating: 4.5,
+                reviews: 188,
+                image: primaryRoomImage,
+                phone_number : hotel.contact_number,
+            },
+            booking: {
+                checkIn: new Date(checkInDate).toDateString(),
+                nights,
+                roomType: roomTypeDescription,
+                guests,
+                selectedRooms, // 🔑 Store all room details
+            },
+            pricing: {
+                roomCharge: totalRoomCharge,
+                instantDiscount: 774,
+                wizardDiscount: 60,
+                couponDiscount: appliedCoupon ? 500 : 0,
+            },
+        })
+    }
 
         init()
     }, [
@@ -108,6 +136,7 @@ export default function BookingPage() {
         checkInDate,
         checkOutDate,
         guests,
+        roomIds.join(','), // 🔑 Dependency on room IDs
         appliedCoupon
     ])
 
@@ -126,7 +155,6 @@ export default function BookingPage() {
         (bookingData?.pricing?.instantDiscount ?? 0) -
         (bookingData?.pricing?.wizardDiscount ?? 0) -
         (bookingData?.pricing?.couponDiscount ?? 0);
-    // const totalAmount = bookingData.total_price
 
     const totalAmount = total
 
@@ -137,168 +165,180 @@ export default function BookingPage() {
 
     const remainingAmount = totalAmount - payNowAmount
 
-    const handleApplyCoupon = () => {
-        if (couponCode.toUpperCase() === "SAVE500") {
-            setAppliedCoupon({
-                code: couponCode,
-                discount: 500
+const handleApplyCoupon = () => {
+    if (couponCode.toUpperCase() === "SAVE500") {
+        setAppliedCoupon({
+            code: couponCode,
+            discount: 500
+        })
+        setShowCouponInput(false)
+    } else {
+        alert("Invalid coupon code!")
+    }
+}
+
+const handleRemoveCoupon = () => {
+    setAppliedCoupon(null)
+    setCouponCode("")
+}
+
+const handleGuestDetailsChange = (e) => {
+    setGuestDetails({
+        ...guestDetails,
+        [e.target.name]: e.target.value
+    })
+    setErrors({
+        ...errors,
+        [e.target.name]: ""
+    })
+}
+
+const validateGuestDetails = () => {
+    const newErrors = {}
+
+    if (!guestDetails.name.trim()) {
+        newErrors.name = "Name is required"
+    }
+
+    if (!guestDetails.email.trim()) {
+        newErrors.email = "Email is required"
+    } else if (!/\S+@\S+\.\S+/.test(guestDetails.email)) {
+        newErrors.email = "Email is invalid"
+    }
+
+    if (!guestDetails.phone.trim()) {
+        newErrors.phone = "Phone is required"
+    } else if (!/^\d{10}$/.test(guestDetails.phone)) {
+        newErrors.phone = "Phone must be 10 digits"
+    }
+
+    setErrors(newErrors)
+    return Object.keys(newErrors).length === 0
+}
+
+
+
+// 🔑 UPDATED: Handle multiple rooms
+const handleAddGuests = async () => {
+    if (!validateGuestDetails()) {
+        return;
+    }
+
+    const hotel = await getHotelDetails(id);
+
+    if (!hotel?.rooms?.length) {
+        alert("Room data not loaded yet. Please wait.");
+        return;
+    }
+
+    // 🔑 Verify all selected rooms exist
+    const selectedRooms = hotel.rooms.filter(
+        room => roomIds.includes(room.id)
+    )
+
+    if (selectedRooms.length === 0) {
+        alert("Selected rooms not found.")
+        return
+    }
+
+    if (selectedRooms.length !== roomIds.length) {
+        alert("Some selected rooms are no longer available.")
+        return
+    }
+
+    // 🔑 Select multiple rooms
+    const res = await selectRooms({
+        resort_id: id,
+        room_ids: roomIds, // 🔑 Pass array of all room IDs
+        check_in_date: formatDateForAPI(checkInDate),
+        check_out_date: formatDateForAPI(checkOutDate),
+        guests,
+    });
+
+    const attemptId = res.booking_attempt_id;
+    setBookingAttemptId(attemptId);
+    localStorage.setItem("bookingAttemptId", attemptId);
+
+    if (!attemptId) {
+        alert("Booking session expired. Please start again.");
+        return;
+    }
+
+    // 🔑 UPDATED: Create guest details for each room
+    // Distribute guests across rooms (you may want to adjust this logic)
+    const guestsPerRoom = Math.ceil(guests / selectedRooms.length)
+    
+    const guestDetailsList = []
+    let remainingGuests = guests
+
+    selectedRooms.forEach((room, index) => {
+        const guestsForThisRoom = Math.min(guestsPerRoom, remainingGuests, room.capacity)
+        
+        for (let i = 0; i < guestsForThisRoom; i++) {
+            guestDetailsList.push({
+                room_id: room.id,
+                name: guestDetails.name,
+                age: 25,
             })
-            setShowCouponInput(false)
-        } else {
-            alert("Invalid coupon code!")
         }
-    }
+        
+        remainingGuests -= guestsForThisRoom
+    })
 
-    const handleRemoveCoupon = () => {
-        setAppliedCoupon(null)
-        setCouponCode("")
-    }
+    await addGuestDetails({
+        booking_attempt_id: attemptId,
+        guests: guestDetailsList,
+    });
 
-    const handleGuestDetailsChange = (e) => {
-        setGuestDetails({
-            ...guestDetails,
-            [e.target.name]: e.target.value
-        })
-        // Clear error when user starts typing
-        setErrors({
-            ...errors,
-            [e.target.name]: ""
-        })
-    }
-
-    const validateGuestDetails = () => {
-        const newErrors = {}
-
-        if (!guestDetails.name.trim()) {
-            newErrors.name = "Name is required"
-        }
-
-        if (!guestDetails.email.trim()) {
-            newErrors.email = "Email is required"
-        } else if (!/\S+@\S+\.\S+/.test(guestDetails.email)) {
-            newErrors.email = "Email is invalid"
-        }
-
-        if (!guestDetails.phone.trim()) {
-            newErrors.phone = "Phone is required"
-        } else if (!/^\d{10}$/.test(guestDetails.phone)) {
-            newErrors.phone = "Phone must be 10 digits"
-        }
-
-        setErrors(newErrors)
-        return Object.keys(newErrors).length === 0
-    }
-
-
-
-    const handleConfirmBooking = () => {
-        // Handle booking confirmation
-        alert("Booking confirmed!")
-    }
-
-
-
-
-
-    const handleAddGuests = async () => {
-        // 🚫 STOP immediately if details are invalid
-        if (!validateGuestDetails()) {
-            return;
-        }
-
-        const hotel = await getHotelDetails(id);
-
-        if (!hotel?.rooms?.length) {
-            alert("Room data not loaded yet. Please wait.");
-            return;
-        }
-
-        const selectedRoom = hotel.rooms.find(
-            room => room.id === roomId
-        )
-
-        if (!selectedRoom) {
-            alert("Selected room not found.")
+    setCurrentStep(2);
+};
+const handlePayNow = async (paymentType = "full") => {
+        // Validate booking data
+        if (!bookingAttemptId) {
+            toast.error("Booking session expired. Please start over.")
+            setTimeout(() => {
+                router.push(`/hotels/${hotelId}`)
+            }, 2000)
             return
         }
 
+        setIsPaying(true)
 
-        const res = await selectRooms({
-            resort_id: id,
-            room_ids: [selectedRoom.id],
-            check_in_date: formatDateForAPI(checkInDate),
-            check_out_date: formatDateForAPI(checkOutDate),
-            guests,
-        });
-
-        const attemptId = res.booking_attempt_id;
-        setBookingAttemptId(attemptId);
-        localStorage.setItem("bookingAttemptId", attemptId);
-
-        if (!attemptId) {
-            alert("Booking session expired. Please start again.");
-            return;
-        }
-
-        const guestDetailsList = Array.from({ length: guests }, () => ({
-            room_id: selectedRoom.id,
-            name: guestDetails.name,
-            age: 25,
-        }));
-
-        await addGuestDetails({
-            booking_attempt_id: attemptId,
-            guests: guestDetailsList,
-        });
-
-        setCurrentStep(2);
-    };
-
-
-
-    const handlePayNow = async (paymentType = "full") => {
         try {
-            if (!bookingAttemptId) {
-                alert("Booking session expired. Please start again.")
-                return
-            }
-
-            setIsPaying(true)
-
             // 1️⃣ Load Razorpay SDK
             const loaded = await loadRazorpay()
             if (!loaded) {
-                alert("Razorpay SDK failed to load")
+                toast.error("Payment gateway failed to load. Please refresh the page.")
+                setIsPaying(false)
                 return
             }
 
-            // 2️⃣ Create Razorpay order (backend)
+            // 2️⃣ Create Razorpay order
+            toast.loading("Creating order...", { id: 'create-order' })
+            
             const orderData = await createRazorpayOrder({
                 booking_attempt_id: bookingAttemptId,
                 payment_type: paymentType,
             })
 
-            /**
-             * Backend returns:
-             * {
-             *   order_id,
-             *   amount,
-             *   currency,
-             *   key,
-             *   booking_attempt_id,
-             *   payment_id
-             * }
-             */
+            toast.success("Order created", { id: 'create-order' })
+            console.log("Order created:", orderData)
 
-            // 3️⃣ Open Razorpay Checkout
+            // Validate order data
+            if (!orderData.order_id || !orderData.key) {
+                throw new Error("Invalid order data received")
+            }
+
+            // 3️⃣ Configure Razorpay Checkout
             const options = {
                 key: orderData.key,
                 amount: orderData.amount,
-                currency: orderData.currency,
+                currency: orderData.currency || "INR",
                 order_id: orderData.order_id,
 
                 name: bookingData.hotel.name,
-                description: `Booking Attempt #${orderData.booking_attempt_id}`,
+                description: `Booking for ${bookingData.booking.nights} night${bookingData.booking.nights > 1 ? 's' : ''}`,
+                image: bookingData.hotel.image, // Optional
 
                 prefill: {
                     name: guestDetails.name,
@@ -307,41 +347,141 @@ export default function BookingPage() {
                 },
 
                 handler: async function (response) {
-                    // 4️⃣ Verify payment
-                    const verifyRes = await verifyPayment({
-                        razorpay_order_id: response.razorpay_order_id,
-                        razorpay_payment_id: response.razorpay_payment_id,
-                        razorpay_signature: response.razorpay_signature,
-                    })
+                    console.log("Payment successful:", response)
+                    
+                    // Show verifying state
+                    toast.loading("Verifying payment...", { id: 'verify-payment' })
+                    
+                    try {
+                        const verifyRes = await verifyPayment({
+                            razorpay_order_id: response.razorpay_order_id,
+                            razorpay_payment_id: response.razorpay_payment_id,
+                            razorpay_signature: response.razorpay_signature,
+                        })
 
-                    if (verifyRes.success) {
-                        localStorage.removeItem("bookingAttemptId")
-                        router.push(`/booking/success/${verifyRes.booking_id}`)
-                    } else {
-                        alert("Payment verification failed")
+                        console.log("Verification response:", verifyRes)
+
+                        if (verifyRes.success) {
+                            toast.success("Payment verified! Redirecting...", { id: 'verify-payment' })
+                            
+                            // Clean up
+                            localStorage.removeItem("bookingAttemptId")
+                            
+                            // Redirect to booking details
+                            setTimeout(() => {
+                                router.push(`/bookings/${verifyRes.booking_id}`)
+                            }, 1000)
+                        } else {
+                            handleVerificationError(verifyRes)
+                        }
+                    } catch (error) {
+                        console.error("Verification error:", error)
+                        handleVerificationError({ error: error.message })
                     }
+                },
+
+                modal: {
+                    ondismiss: function() {
+                        console.log("Payment cancelled by user")
+                        toast.error("Payment cancelled")
+                        setIsPaying(false)
+                    },
+                    confirm_close: true // Ask user to confirm before closing
                 },
 
                 theme: {
                     color: "#0066FF",
                 },
+
+                retry: {
+                    enabled: true,
+                    max_count: 3
+                }
             }
 
+            console.log("Opening Razorpay checkout")
             const rzp = new window.Razorpay(options)
 
-            rzp.on("payment.failed", () => {
-                alert("Payment failed. You can retry from My Bookings.")
+            rzp.on("payment.failed", function(response) {
+                console.error("Payment failed:", response.error)
+                
+                const errorMessage = response.error.description || "Payment failed"
+                toast.error(errorMessage)
+                
+                // Navigate back with error info
+                setTimeout(() => {
+                    router.push(`/hotels/${hotelId}?payment_failed=true`)
+                }, 2000)
+                
+                setIsPaying(false)
             })
 
             rzp.open()
-        } catch (err) {
-            console.error(err)
-            alert(err.message || "Payment failed")
-        } finally {
+            
+        } catch (error) {
+            console.error("Payment error:", error)
+            toast.error(error.message || "Failed to initiate payment")
+            
+            // Navigate back to hotel page
+            setTimeout(() => {
+                router.push(`/hotels/${hotelId}?error=payment_failed`)
+            }, 2000)
+            
             setIsPaying(false)
         }
     }
 
+    const handleVerificationError = (errorData) => {
+        toast.dismiss('verify-payment')
+        setIsPaying(false)
+
+        const errorType = errorData.error
+        const resortId = bookingData?.hotel?.id || hotelId
+
+        switch(errorType) {
+            case 'SIGNATURE_INVALID':
+                toast.error(
+                    "Payment verification failed. If amount was deducted, contact support.",
+                    { duration: 6000 }
+                )
+                break
+                
+            case 'PAYMENT_NOT_FOUND':
+                toast.error(
+                    "Payment record not found. Please contact support.",
+                    { duration: 5000 }
+                )
+                break
+                
+            case 'UNAUTHORIZED':
+                toast.error("This payment does not belong to your account")
+                break
+                
+            case 'SERVER_ERROR':
+                toast.error(
+                    "Server error occurred. Please contact support if amount was deducted.",
+                    { duration: 6000 }
+                )
+                break
+                
+            default:
+                toast.error(
+                    errorData.message || "Payment verification failed. Please try again.",
+                    { duration: 5000 }
+                )
+        }
+
+        // Navigate back to hotel details page after delay
+        setTimeout(() => {
+            router.push(
+                `/hotels/${resortId}?` + 
+                `check_in=${bookingData.booking.checkIn}&` +
+                `check_out=${bookingData.booking.checkOut}&` +
+                `guests=${bookingData.booking.guests}&` +
+                `payment_error=${errorType || 'unknown'}`
+            )
+        }, 3000)
+    }
     return (
         <div className="min-h-screen bg-gray-50">
             <div className="container mx-auto max-w-6xl px-4 py-6 sm:px-6 lg:px-8">
@@ -374,7 +514,7 @@ export default function BookingPage() {
                             </div>
                         </div>
                         <a href="tel:1234567890" className="text-[#0066FF] font-semibold text-sm whitespace-nowrap">
-                            123-456-7890
+                            {bookingData.hotel.phone_number}
                         </a>
                     </div>
 
@@ -696,27 +836,27 @@ export default function BookingPage() {
                                 {/* Total */}
                                 <div className="flex justify-between items-baseline mb-2 pt-6 border-t border-gray-200">
                                     <span className="text-lg font-bold text-gray-900">Total</span>
-                                    <div className="pt-6 border-t border-gray-200 space-y-2">
+                                        <div className="pt-6 border-t border-gray-200 space-y-2">
                                         <div className="flex justify-between items-baseline">
                                             <span className="text-lg font-bold text-gray-900">
-                                                {payNowType === "partial" ? "Pay now" : "Total"}
+                                            {payNowType === "partial" ? "Pay now" : "Total"}
                                             </span>
                                             <span className="text-2xl font-bold text-gray-900">
-                                                ₹{payNowAmount}
+                                            ₹{payNowAmount}
                                             </span>
                                         </div>
 
                                         {payNowType === "partial" && (
                                             <div className="flex justify-between text-sm text-gray-600">
-                                                <span>Pay at property</span>
-                                                <span>₹{remainingAmount}</span>
+                                            <span>Pay at property</span>
+                                            <span>₹{remainingAmount}</span>
                                             </div>
                                         )}
 
                                         <p className="text-xs text-gray-500 text-right">
                                             Taxes included · No hidden charges
                                         </p>
-                                    </div>
+                                        </div>
 
                                 </div>
                             </div>

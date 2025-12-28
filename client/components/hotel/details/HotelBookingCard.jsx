@@ -2,80 +2,110 @@
 
 import { Card } from "@/components/ui/Card"
 import { Button } from "@/components/ui/Button"
-import { MapPin, Check, Calendar } from "lucide-react"
-import { useState } from "react"
+import { MapPin, Calendar, Users, Plus, Minus } from "lucide-react"
+import { useState, useMemo } from "react"
 import DatePicker from "@/components/ui/DatePicker"
 import { format } from "date-fns"
 
 export default function HotelBookingCard({
   hotelName,
   location,
-  originalPrice,
-  discountedPrice,
-  discountPercentage,
   hotelId,
-  selectedRoom,
-  isAvailable, // This now reflects if the SELECTED room is available
-
-  /* 🔑 NEW PROPS */
+  selectedRoomCounts,
+  selectedRoomDetails,
+  categories,
+  totalCapacity,
   checkIn,
   checkOut,
   guests,
+  nights,
   onDateChange,
   onGuestsChange,
+  maxPossibleCapacity, // NEW: Total capacity from all available rooms
 }) {
   const [showDatePicker, setShowDatePicker] = useState(false)
 
-  /* ---------------- BOOKING STATE ---------------- */
-  // Check if we have a selected room AND if it's available
-  const bookingState =
-    !selectedRoom || !isAvailable ? "SOLD_OUT" : "AVAILABLE"
-
-  /* ---------------- Pricing ---------------- */
-  const MS_PER_DAY = 1000 * 60 * 60 * 24
-  const nights = Math.max(
-    1,
-    Math.ceil((checkOut - checkIn) / MS_PER_DAY)
-  )
-
-  const basePrice = discountedPrice * nights
-  const originalTotal = originalPrice * nights
-  const savings = Math.max(0, originalTotal - basePrice)
+  // Calculate pricing
+  const basePrice = Object.entries(selectedRoomCounts).reduce((sum, [capacity, count]) => {
+    const category = categories.find(c => c.capacity === Number(capacity))
+    return sum + (category ? category.minPrice * count * nights : 0)
+  }, 0)
 
   const TAX_RATE = 0.18
   const taxesAndFees = Math.round(basePrice * TAX_RATE)
   const totalPrice = basePrice + taxesAndFees
+  const totalRooms = Object.values(selectedRoomCounts).reduce((sum, count) => sum + count, 0)
+
+  // Validation
+  const hasEnoughCapacity = totalCapacity >= guests
+  const hasSelectedRooms = totalRooms > 0
+  const canBook = hasSelectedRooms && hasEnoughCapacity
+
+  const getValidationMessage = () => {
+    if (!hasSelectedRooms) return "Please select at least one room"
+    if (!hasEnoughCapacity) return `Need ${guests - totalCapacity} more guest capacity`
+    return null
+  }
+
+  const validationMessage = getValidationMessage()
 
   const handleBookNow = () => {
-    if (bookingState !== "AVAILABLE") return
+    if (!canBook) return
+    
+    const roomIds = selectedRoomDetails.map(r => r.id).join(',')
     window.location.href =
       `/booking/${hotelId}` +
-      `?room_id=${selectedRoom.id}` +
+      `?room_ids=${roomIds}` +
       `&checkIn=${format(checkIn, "yyyy-MM-dd")}` +
       `&checkOut=${format(checkOut, "yyyy-MM-dd")}` +
       `&guests=${guests}`
   }
 
+  const handleGuestIncrement = () => {
+    if (guests < maxPossibleCapacity) {
+      onGuestsChange(guests + 1)
+    }
+  }
+
+  const handleGuestDecrement = () => {
+    if (guests > 1) {
+      onGuestsChange(guests - 1)
+    }
+  }
+
   return (
     <div className="lg:sticky lg:top-20">
-      <Card className="p-6 shadow-lg border border-gray-200 bg-blue-50/50">
-
+      <Card className="p-6 shadow-lg border border-gray-200">
         {/* Hotel Info */}
         <div className="mb-4">
-          <h3 className="text-xl font-bold text-gray-900 mb-1">
-            {hotelName}
-          </h3>
+          <h3 className="text-xl font-bold text-gray-900 mb-1">{hotelName}</h3>
           <div className="flex items-center text-gray-600">
             <MapPin className="h-4 w-4 mr-1" />
             <span className="text-sm">{location}</span>
           </div>
         </div>
 
-        {/* Selected Room Info */}
-        {selectedRoom && (
-          <div className="mb-4 p-3 bg-white rounded-lg border border-gray-200">
-            <p className="text-xs text-gray-500 mb-1">Selected Room</p>
-            <p className="text-sm font-semibold text-gray-900">{selectedRoom.room_type}</p>
+        {/* Quick Summary */}
+        {hasSelectedRooms && (
+          <div className="mb-4 p-4 bg-blue-50 rounded-lg border border-blue-200">
+            <div className="space-y-2">
+              <div className="flex justify-between text-sm">
+                <span className="text-gray-700">Rooms</span>
+                <span className="font-semibold">{totalRooms}</span>
+              </div>
+              <div className="flex justify-between text-sm">
+                <span className="text-gray-700">Capacity</span>
+                <span className={`font-semibold ${
+                  hasEnoughCapacity ? 'text-green-600' : 'text-red-600'
+                }`}>
+                  {totalCapacity} guests
+                </span>
+              </div>
+              <div className="flex justify-between text-sm">
+                <span className="text-gray-700">Nights</span>
+                <span className="font-semibold">{nights}</span>
+              </div>
+            </div>
           </div>
         )}
 
@@ -83,14 +113,12 @@ export default function HotelBookingCard({
         <div className="mb-5">
           <div className="flex items-baseline gap-2 mb-1">
             <span className="text-3xl font-bold text-gray-900">
-              ₹{basePrice}
-            </span>
-            <span className="text-lg text-gray-400 line-through">
-              ₹{originalTotal}
+              ₹{basePrice.toLocaleString()}
             </span>
           </div>
           <p className="text-sm text-gray-500">
             for {nights} night{nights > 1 ? "s" : ""}
+            {hasSelectedRooms && ` • ${totalRooms} room${totalRooms > 1 ? 's' : ''}`}
           </p>
         </div>
 
@@ -125,7 +153,7 @@ export default function HotelBookingCard({
               checkIn={checkIn}
               checkOut={checkOut}
               onDateChange={(ci, co) => {
-                onDateChange(ci, co) // 🔑 notify parent
+                onDateChange(ci, co)
                 setShowDatePicker(false)
               }}
               onClose={() => setShowDatePicker(false)}
@@ -133,73 +161,86 @@ export default function HotelBookingCard({
           )}
         </div>
 
-        {/* Guests */}
-        <div className="bg-white border rounded-lg p-3 mb-4">
-          <label className="text-xs text-gray-500 mb-1 block">
-            Guests
-          </label>
-          <select
-            value={guests}
-            onChange={(e) => onGuestsChange(Number(e.target.value))}
-            className="w-full text-sm font-medium outline-none bg-transparent"
-          >
-            {[1, 2, 3, 4].map(g => (
-              <option key={g} value={g}>
-                {g} guest{g > 1 ? "s" : ""}
-              </option>
-            ))}
-          </select>
+        {/* Guests Counter - NEW DESIGN */}
+        <div className="bg-white border rounded-lg p-4 mb-4">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <Users className="h-4 w-4 text-gray-500" />
+              <label className="text-sm font-medium text-gray-700">
+                Guests
+              </label>
+            </div>
+            
+            <div className="flex items-center gap-3">
+              <button
+                onClick={handleGuestDecrement}
+                disabled={guests <= 1}
+                className="w-9 h-9 rounded-full border-2 border-gray-300 flex items-center justify-center hover:border-blue-500 hover:bg-blue-50 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+                aria-label="Decrease guests"
+              >
+                <Minus className="h-4 w-4 text-gray-700" />
+              </button>
+              
+              <span className="font-bold text-xl min-w-[45px] text-center text-gray-900">
+                {guests}
+              </span>
+              
+              <button
+                onClick={handleGuestIncrement}
+                disabled={guests >= maxPossibleCapacity}
+                className="w-9 h-9 rounded-full border-2 border-gray-300 flex items-center justify-center hover:border-blue-500 hover:bg-blue-50 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+                aria-label="Increase guests"
+              >
+                <Plus className="h-4 w-4 text-gray-700" />
+              </button>
+            </div>
+          </div>
+          
+          <p className="text-xs text-gray-500 mt-2 text-right">
+            Max: {maxPossibleCapacity} guests
+          </p>
         </div>
 
-        {savings > 0 && (
-          <div className="bg-blue-100 border border-blue-200 rounded-md p-2.5 mb-3 flex gap-2">
-            <Check className="h-4 w-4 text-blue-600 mt-0.5" />
-            <p className="text-xs font-semibold text-blue-900">
-              You're saving ₹{savings}
-            </p>
+        {/* Price Breakdown */}
+        {hasSelectedRooms && (
+          <div className="space-y-2 mb-4 text-xs">
+            <div className="flex justify-between">
+              <span>Subtotal</span>
+              <span>₹{basePrice.toLocaleString()}</span>
+            </div>
+            <div className="flex justify-between">
+              <span>Taxes & fees (18%)</span>
+              <span>₹{taxesAndFees.toLocaleString()}</span>
+            </div>
+            <div className="border-t pt-2 flex justify-between text-sm font-semibold">
+              <span>Total</span>
+              <span>₹{totalPrice.toLocaleString()}</span>
+            </div>
           </div>
         )}
-    
-        {/* Breakdown */}
-        <div className="space-y-2 mb-4 text-xs">
-          <div className="flex justify-between">
-            <span>Room × {nights} nights</span>
-            <span>₹{basePrice}</span>
+
+        {/* Validation Message */}
+        {validationMessage && (
+          <div className="mb-3 p-2.5 bg-amber-50 border border-amber-200 rounded-md">
+            <p className="text-xs text-amber-800 font-medium text-center">
+              {validationMessage}
+            </p>
           </div>
-          <div className="flex justify-between">
-            <span>Taxes & fees</span>
-            <span>₹{taxesAndFees}</span>
-          </div>
-          <div className="border-t pt-2 flex justify-between text-sm font-semibold">
-            <span>Total</span>
-            <span>₹{totalPrice}</span>
-          </div>
-        </div>
-      
-        {/* Sold out text */}
-        {bookingState === "SOLD_OUT" && (
-          <p className="text-xs text-red-600 text-center mb-2 font-medium">
-            {!selectedRoom 
-              ? "Please select a room" 
-              : "This room is not available for selected dates"}
-          </p>
         )}
 
         {/* CTA */}
         <Button
           onClick={handleBookNow}
-          disabled={bookingState !== "AVAILABLE"}
+          disabled={!canBook}
           className={`w-full py-3 text-base font-semibold rounded-lg transition-colors
-            ${
-              bookingState === "AVAILABLE"
-                ? "bg-primary hover:bg-primary/90 text-white"
-                : "bg-gray-300 text-gray-600 cursor-not-allowed"
+            ${canBook
+              ? "bg-primary hover:bg-primary/90 text-white"
+              : "bg-gray-300 text-gray-600 cursor-not-allowed"
             }
           `}
         >
-          {bookingState === "AVAILABLE" ? "Book now" : "Sold out"}
+          {canBook ? "Continue to Book" : "Complete Selection"}
         </Button>
-
       </Card>
     </div>
   )
