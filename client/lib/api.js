@@ -383,3 +383,21 @@ export const getExploreRooms = async () => {
 
     return response.json();
 };
+
+
+export const validateCoupon = async (couponCode) => {
+  const response = await fetch(`${API_BASE_URL}/coupon/?coupon_code=${encodeURIComponent(couponCode)}`, {
+    method: 'GET',
+  })
+  
+  const data = await response.json()
+// console.log(data)
+  if (!data.valid) {
+    throw new Error('Invalid or expired coupon code')
+  }
+  
+  return {
+    code: couponCode,
+    discount_percentage: data.discount
+  }
+}

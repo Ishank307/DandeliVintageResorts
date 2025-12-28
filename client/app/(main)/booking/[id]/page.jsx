@@ -11,7 +11,15 @@ import toast from "react-hot-toast"
 
 import { useRouter } from "next/navigation"
 
-import { getHotelDetails, getImageUrl, addGuestDetails, selectRooms, formatDateForAPI, createRazorpayOrder, verifyPayment } from "@/lib/api";
+import { 
+    getHotelDetails,
+    getImageUrl, 
+    addGuestDetails, 
+    selectRooms, 
+    formatDateForAPI, 
+    createRazorpayOrder, 
+    verifyPayment , 
+    validateCoupon} from "@/lib/api";
 import { loadRazorpay } from "@/utils/loadRazorpay"
 import { useAuth } from "@/context/AuthContext"
 
@@ -25,6 +33,7 @@ export default function BookingPage() {
     const {id} = useParams();
     const searchParams = useSearchParams()
     const [bookingAttemptId, setBookingAttemptId] = useState(null)
+const [isValidatingCoupon, setIsValidatingCoupon] = useState(false)
 
     const [isPaying, setIsPaying] = useState(false)
 
@@ -123,9 +132,9 @@ useEffect(() => {
             },
             pricing: {
                 roomCharge: totalRoomCharge,
-                instantDiscount: 774,
-                wizardDiscount: 60,
-                couponDiscount: appliedCoupon ? 500 : 0,
+                instantDiscount: 0,
+                wizardDiscount: 0,
+                couponDiscount: appliedCoupon ?( totalRoomCharge * appliedCoupon.discount_percentage )/100: 0,
             },
         })
     }
@@ -152,31 +161,46 @@ useEffect(() => {
 
     const total =
         (bookingData?.pricing?.roomCharge ?? 0) -
-        (bookingData?.pricing?.instantDiscount ?? 0) -
-        (bookingData?.pricing?.wizardDiscount ?? 0) -
         (bookingData?.pricing?.couponDiscount ?? 0);
 
     const totalAmount = total
 
     const payNowAmount =
         payNowType === "partial"
-            ? Math.round((totalAmount * PARTIAL_PERCENTAGE) / 100)
+            ? Math.round((totalAmount * PARTIAL_PERCENTAGE)/ 100)
             : totalAmount
 
     const remainingAmount = totalAmount - payNowAmount
 
-const handleApplyCoupon = () => {
-    if (couponCode.toUpperCase() === "SAVE500") {
-        setAppliedCoupon({
-            code: couponCode,
-            discount: 500
-        })
-        setShowCouponInput(false)
-    } else {
-        alert("Invalid coupon code!")
+
+const handleApplyCoupon = async () => {
+    if (!couponCode.trim()) {
+        toast.error('Please enter a coupon code')
+        return
+    }
+
+    setIsValidatingCoupon(true)
+
+    try {
+        
+
+        const data = await validateCoupon(couponCode)
+        console.log(data)
+        
+            setAppliedCoupon({
+                code: couponCode.toUpperCase(),
+                discount_percentage: data.discount_percentage
+            })
+            setShowCouponInput(false)
+            toast.success(`Coupon applied! ${data.discount_percentage}% discount`)
+        
+    } catch (error) {
+        console.error('Coupon validation error:', error)
+        toast.error('Failed to validate coupon. Please try again.')
+    } finally {
+        setIsValidatingCoupon(false)
     }
 }
-
 const handleRemoveCoupon = () => {
     setAppliedCoupon(null)
     setCouponCode("")
@@ -319,6 +343,7 @@ const handlePayNow = async (paymentType = "full") => {
             const orderData = await createRazorpayOrder({
                 booking_attempt_id: bookingAttemptId,
                 payment_type: paymentType,
+                coupon_code: appliedCoupon?.code || null, 
             })
 
             toast.success("Order created", { id: 'create-order' })
@@ -337,7 +362,7 @@ const handlePayNow = async (paymentType = "full") => {
                 order_id: orderData.order_id,
 
                 name: bookingData.hotel.name,
-                description: `Booking for ${bookingData.booking.nights} night${bookingData.booking.nights > 1 ? 's' : ''}`,
+                description: `Booking for ${bookingData.booking.nights} night${bookingData.booking.nights > 1 ? 's' : ''}${appliedCoupon ? ` (${appliedCoupon.discount_percentage}% off)` : ''}`,
                 image: bookingData.hotel.image, // Optional
 
                 prefill: {
@@ -762,20 +787,14 @@ const handlePayNow = async (paymentType = "full") => {
                                         <span>Room charge</span>
                                         <span>₹{bookingData.pricing.roomCharge}</span>
                                     </div>
-                                    <div className="flex justify-between text-green-600">
-                                        <span>Instant discount</span>
-                                        <span>-₹{bookingData.pricing.instantDiscount}</span>
-                                    </div>
+                                
                                     {appliedCoupon && (
                                         <div className="flex justify-between text-green-600">
                                             <span>Coupon applied ({appliedCoupon.code})</span>
                                             <span>-₹{bookingData.pricing.couponDiscount}</span>
                                         </div>
                                     )}
-                                    <div className="flex justify-between text-green-600">
-                                        <span>Wizard discount</span>
-                                        <span>-₹{bookingData.pricing.wizardDiscount}</span>
-                                    </div>
+                                    
                                 </div>
 
                                 {/* Apply Coupon - LARGER */}
@@ -799,12 +818,13 @@ const handlePayNow = async (paymentType = "full") => {
                                                     className="w-full text-sm"
                                                 />
                                                 <div className="flex gap-2">
-                                                    <Button
+                                                    <button 
                                                         onClick={handleApplyCoupon}
-                                                        className="flex-1 bg-[#0066FF] hover:bg-blue-700 text-white text-sm px-4"
+                                                        disabled={isValidatingCoupon || !couponCode.trim()}
+                                                        className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:bg-gray-400"
                                                     >
-                                                        Apply
-                                                    </Button>
+                                                        {isValidatingCoupon ? 'Validating...' : 'Apply'}
+                                                    </button>
                                                     <Button
                                                         onClick={() => {
                                                             setShowCouponInput(false)
