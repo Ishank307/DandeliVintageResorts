@@ -3,31 +3,42 @@ from django.core.mail import EmailMessage
 from django.conf import settings
 from background_task import background
 from bookings.models import FinalBooking
-@background(schedule=60)
+@background()   # or @background() if you don't want delay
 def send_invoice_email_enqueue(booking_id):
     """
-    Generates an invoice PDF and sends it via email to the user.
+    Generates a professional invoice PDF and emails it to the user.
     """
-    
-    booking = FinalBooking.objects.select_related("user").get(id=booking_id)
-    
-    print('a')
-    user = booking.user
-    print('b')
-    invoice_number = f"INV-{booking.id:06d}"
-    print('c')
-    amount = booking.payment.amount
-    print('d')
-    pdf_buffer = generate_invoice_pdf(invoice_number, user.name or user.phone_number, amount)
-    print('e')
 
+    # 1) Fetch booking + related data
+    booking = FinalBooking.objects.select_related("user", "resort", "payment").get(id=booking_id)
+
+    user = booking.user
+    invoice_number = f"INV-{booking.id:06d}"
+
+    # 2) Generate PDF (NEW SIGNATURE)
+    pdf_buffer = generate_invoice_pdf(
+        booking=booking,
+        invoice_number=invoice_number
+    )
+
+    # 3) Send email
     email = EmailMessage(
-        subject=f"Your Invoice #{invoice_number}",
-        body=f"Dear {user.name or user.phone_number},\n\nPlease find attached the invoice for your booking #{booking.id}.\n\nThank you for choosing our service!",
+        subject=f"Your Invoice #{invoice_number} – Vintza by Vintage Resorts",
+        body=(
+            f"Dear {user.name or user.username},\n\n"
+            f"Thank you for your booking.\n"
+            f"Please find your invoice attached for Booking ID #{booking.id}.\n\n"
+            f"Warm regards,\n"
+            f"Vintza by Vintage Resorts"
+        ),
         from_email=settings.DEFAULT_FROM_EMAIL,
         to=[user.email],
     )
-    print('f')
-    email.attach(f"Invoice_{invoice_number}.pdf", pdf_buffer.getvalue(), 'application/pdf')
-    print('g')
+
+    email.attach(
+        filename=f"Invoice_{invoice_number}.pdf",
+        content=pdf_buffer.getvalue(),
+        mimetype="application/pdf",
+    )
+
     email.send(fail_silently=False)
