@@ -10,17 +10,19 @@ import { useParams, useSearchParams } from "next/navigation"
 
 import { useRouter } from "next/navigation"
 
-import { getHotelDetails, getImageUrl ,addGuestDetails,selectRooms,formatDateForAPI,createRazorpayOrder,verifyPayment} from "@/lib/api";
+import { getHotelDetails, getImageUrl, addGuestDetails, selectRooms, formatDateForAPI, createRazorpayOrder, verifyPayment } from "@/lib/api";
 import { loadRazorpay } from "@/utils/loadRazorpay"
+import { useAuth } from "@/context/AuthContext"
 
 
 export default function BookingPage() {
+    const { user } = useAuth() // Check if user is logged in
     const [currentStep, setCurrentStep] = useState(1) // 1 = Guest Details, 2 = Payment Options
     const [paymentMethod, setPaymentMethod] = useState("property")
     const [couponCode, setCouponCode] = useState("")
     const [appliedCoupon, setAppliedCoupon] = useState(null)
     const [showCouponInput, setShowCouponInput] = useState(false)
-    const {id} = useParams();
+    const { id } = useParams();
     const searchParams = useSearchParams()
     const [bookingAttemptId, setBookingAttemptId] = useState(null)
     // const [selectedRoom, setSelectedRoom] = useState(null)
@@ -48,8 +50,8 @@ export default function BookingPage() {
         phone: ""
     })
     const PARTIAL_PERCENTAGE = 20 // Must match Django settings
-// const [paymentMethod, setPaymentMethod] = useState("property") // property | now
-const [payNowType, setPayNowType] = useState("full") // full | partial
+    // const [paymentMethod, setPaymentMethod] = useState("property") // property | now
+    const [payNowType, setPayNowType] = useState("full") // full | partial
     const [bookingData, setBookingData] = useState(null);
     useEffect(() => {
         const saved = localStorage.getItem("bookingAttemptId")
@@ -62,7 +64,7 @@ const [payNowType, setPayNowType] = useState("full") // full | partial
 
         async function init() {
             const hotel = await getHotelDetails(id)
-            
+
             const selectedRoom = hotel.rooms.find(
                 room => room.id === roomId
             )
@@ -126,14 +128,14 @@ const [payNowType, setPayNowType] = useState("full") // full | partial
         (bookingData?.pricing?.couponDiscount ?? 0);
     // const totalAmount = bookingData.total_price
 
-const totalAmount = total
+    const totalAmount = total
 
-const payNowAmount =
-  payNowType === "partial"
-    ? Math.round((totalAmount * PARTIAL_PERCENTAGE) / 100)
-    : totalAmount
+    const payNowAmount =
+        payNowType === "partial"
+            ? Math.round((totalAmount * PARTIAL_PERCENTAGE) / 100)
+            : totalAmount
 
-const remainingAmount = totalAmount - payNowAmount
+    const remainingAmount = totalAmount - payNowAmount
 
     const handleApplyCoupon = () => {
         if (couponCode.toUpperCase() === "SAVE500") {
@@ -187,7 +189,7 @@ const remainingAmount = totalAmount - payNowAmount
         return Object.keys(newErrors).length === 0
     }
 
- 
+
 
     const handleConfirmBooking = () => {
         // Handle booking confirmation
@@ -212,12 +214,12 @@ const remainingAmount = totalAmount - payNowAmount
         }
 
         const selectedRoom = hotel.rooms.find(
-        room => room.id === roomId
+            room => room.id === roomId
         )
 
         if (!selectedRoom) {
-        alert("Selected room not found.")
-        return
+            alert("Selected room not found.")
+            return
         }
 
 
@@ -345,9 +347,12 @@ const remainingAmount = totalAmount - payNowAmount
             <div className="container mx-auto max-w-6xl px-4 py-6 sm:px-6 lg:px-8">
                 {/* Header */}
                 <header className="flex justify-between items-center mb-6">
-                    <Link href="/search" className="flex items-center text-gray-600 hover:text-gray-900 transition-colors">
+                    <Link
+                        href={`/hotels/${id}?location=${searchParams.get('location') || ''}&check_in=${checkInDate}&check_out=${checkOutDate}&guests=${guests}`}
+                        className="flex items-center text-gray-600 hover:text-gray-900 transition-colors"
+                    >
                         <ChevronLeft className="h-5 w-5" />
-                        <span className="ml-1 text-sm font-medium">Back to booking</span>
+                        <span className="ml-1 text-sm font-medium">Back to hotel</span>
                     </Link>
                     <div className="flex items-center text-gray-600">
                         <Lock className="h-4 w-4" />
@@ -450,10 +455,19 @@ const remainingAmount = totalAmount - payNowAmount
                                         </div>
 
                                         <Button
-                                            onClick={handleAddGuests}
+                                            onClick={() => {
+                                                if (!user) {
+                                                    // Save current URL to return after login
+                                                    const currentUrl = window.location.pathname + window.location.search
+                                                    localStorage.setItem('returnUrl', currentUrl)
+                                                    router.push('/login')
+                                                } else {
+                                                    handleAddGuests()
+                                                }
+                                            }}
                                             className="w-full bg-[#0066FF] hover:bg-blue-700 text-white font-semibold py-3 mt-4"
                                         >
-                                            Continue to Payment Options
+                                            {!user ? 'Login to Continue' : 'Continue to Payment Options'}
                                         </Button>
                                     </div>
                                 </div>
@@ -491,13 +505,13 @@ const remainingAmount = totalAmount - payNowAmount
                                     </div>
 
                                     {/* Payment Options */}
-                                        <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200">
+                                    <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200">
                                         <div className="flex items-center gap-3 mb-4">
                                             <div className="w-8 h-8 bg-[#0066FF] text-white rounded-full flex items-center justify-center font-bold">
-                                            2
+                                                2
                                             </div>
                                             <h2 className="text-xl font-semibold text-gray-800">
-                                            Select payment option
+                                                Select payment option
                                             </h2>
                                         </div>
 
@@ -505,63 +519,61 @@ const remainingAmount = totalAmount - payNowAmount
 
                                             {/* Pay Full */}
                                             <label
-                                            className={`p-5 rounded-lg border-2 cursor-pointer flex gap-4 ${
-                                                payNowType === "full"
-                                                ? "border-green-500 bg-green-50"
-                                                : "border-gray-200"
-                                            }`}
+                                                className={`p-5 rounded-lg border-2 cursor-pointer flex gap-4 ${payNowType === "full"
+                                                    ? "border-green-500 bg-green-50"
+                                                    : "border-gray-200"
+                                                    }`}
                                             >
-                                            <input
-                                                type="radio"
-                                                name="payment-type"
-                                                value="full"
-                                                checked={payNowType === "full"}
-                                                onChange={() => setPayNowType("full")}
-                                                className="h-5 w-5 text-[#0066FF] mt-1"
-                                            />
-                                            <div>
-                                                <h3 className="font-semibold text-gray-900">Pay full amount</h3>
-                                                <p className="text-sm text-gray-500">
-                                                Pay the complete amount now and confirm your booking instantly.
-                                                </p>
-                                            </div>
+                                                <input
+                                                    type="radio"
+                                                    name="payment-type"
+                                                    value="full"
+                                                    checked={payNowType === "full"}
+                                                    onChange={() => setPayNowType("full")}
+                                                    className="h-5 w-5 text-[#0066FF] mt-1"
+                                                />
+                                                <div>
+                                                    <h3 className="font-semibold text-gray-900">Pay full amount</h3>
+                                                    <p className="text-sm text-gray-500">
+                                                        Pay the complete amount now and confirm your booking instantly.
+                                                    </p>
+                                                </div>
                                             </label>
 
                                             {/* Pay Partial */}
                                             <label
-                                            className={`p-5 rounded-lg border-2 cursor-pointer flex gap-4 ${
-                                                payNowType === "partial"
-                                                ? "border-green-500 bg-green-50"
-                                                : "border-gray-200"
-                                            }`}
+                                                className={`p-5 rounded-lg border-2 cursor-pointer flex gap-4 ${payNowType === "partial"
+                                                    ? "border-green-500 bg-green-50"
+                                                    : "border-gray-200"
+                                                    }`}
                                             >
-                                            <input
-                                                type="radio"
-                                                name="payment-type"
-                                                value="partial"
-                                                checked={payNowType === "partial"}
-                                                onChange={() => setPayNowType("partial")}
-                                                className="h-5 w-5 text-[#0066FF] mt-1"
-                                            />
-                                            <div>
-                                                <h3 className="font-semibold text-gray-900">
-                                                Pay partial amount
-                                                </h3>
-                                                <p className="text-sm text-gray-500">
-                                                Pay {PARTIAL_PERCENTAGE}% now to reserve your stay. Balance payable at property.
-                                                </p>
-                                            </div>
+                                                <input
+                                                    type="radio"
+                                                    name="payment-type"
+                                                    value="partial"
+                                                    checked={payNowType === "partial"}
+                                                    onChange={() => setPayNowType("partial")}
+                                                    className="h-5 w-5 text-[#0066FF] mt-1"
+                                                />
+                                                <div>
+                                                    <h3 className="font-semibold text-gray-900">
+                                                        Pay partial amount
+                                                    </h3>
+                                                    <p className="text-sm text-gray-500">
+                                                        Pay {PARTIAL_PERCENTAGE}% now to reserve your stay. Balance payable at property.
+                                                    </p>
+                                                </div>
                                             </label>
 
                                             <Button
-                                            disabled={isPaying}
-                                            onClick={() => handlePayNow(payNowType)}
-                                            className="w-full bg-[#0066FF] hover:bg-blue-700 text-white font-semibold py-3 mt-4"
+                                                disabled={isPaying}
+                                                onClick={() => handlePayNow(payNowType)}
+                                                className="w-full bg-[#0066FF] hover:bg-blue-700 text-white font-semibold py-3 mt-4"
                                             >
-                                            {isPaying ? "Processing payment..." : "Confirm & Pay"}
+                                                {isPaying ? "Processing payment..." : "Confirm & Pay"}
                                             </Button>
                                         </div>
-                                        </div>
+                                    </div>
 
                                 </>
                             )}
@@ -684,27 +696,27 @@ const remainingAmount = totalAmount - payNowAmount
                                 {/* Total */}
                                 <div className="flex justify-between items-baseline mb-2 pt-6 border-t border-gray-200">
                                     <span className="text-lg font-bold text-gray-900">Total</span>
-<div className="pt-6 border-t border-gray-200 space-y-2">
-  <div className="flex justify-between items-baseline">
-    <span className="text-lg font-bold text-gray-900">
-      {payNowType === "partial" ? "Pay now" : "Total"}
-    </span>
-    <span className="text-2xl font-bold text-gray-900">
-      ₹{payNowAmount}
-    </span>
-  </div>
+                                    <div className="pt-6 border-t border-gray-200 space-y-2">
+                                        <div className="flex justify-between items-baseline">
+                                            <span className="text-lg font-bold text-gray-900">
+                                                {payNowType === "partial" ? "Pay now" : "Total"}
+                                            </span>
+                                            <span className="text-2xl font-bold text-gray-900">
+                                                ₹{payNowAmount}
+                                            </span>
+                                        </div>
 
-  {payNowType === "partial" && (
-    <div className="flex justify-between text-sm text-gray-600">
-      <span>Pay at property</span>
-      <span>₹{remainingAmount}</span>
-    </div>
-  )}
+                                        {payNowType === "partial" && (
+                                            <div className="flex justify-between text-sm text-gray-600">
+                                                <span>Pay at property</span>
+                                                <span>₹{remainingAmount}</span>
+                                            </div>
+                                        )}
 
-  <p className="text-xs text-gray-500 text-right">
-    Taxes included · No hidden charges
-  </p>
-</div>
+                                        <p className="text-xs text-gray-500 text-right">
+                                            Taxes included · No hidden charges
+                                        </p>
+                                    </div>
 
                                 </div>
                             </div>
