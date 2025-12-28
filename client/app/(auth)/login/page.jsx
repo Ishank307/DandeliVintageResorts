@@ -86,12 +86,19 @@ export default function LoginPage() {
             const result = await login(email, otpCode)
 
             if (result.success) {
+                // Check if there's a return URL (from booking page)
+                const returnUrl = localStorage.getItem('returnUrl')
+
                 if (
                     result.user.is_first_login ||
                     !result.user.name ||
                     !result.user.email
                 ) {
                     router.push("/profile-setup")
+                } else if (returnUrl) {
+                    // Remove returnUrl and redirect back
+                    localStorage.removeItem('returnUrl')
+                    router.push(returnUrl)
                 } else {
                     router.push("/")
                 }
@@ -167,7 +174,11 @@ export default function LoginPage() {
                     <form
                         onSubmit={(e) => {
                             e.preventDefault()
-                            handleVerifyLogin()
+                            if (!isOtpSent) {
+                                handleSendOtp()
+                            } else {
+                                handleVerifyLogin()
+                            }
                         }}
                         className="space-y-6"
                     >
