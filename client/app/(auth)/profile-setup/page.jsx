@@ -5,6 +5,7 @@ import { useState } from "react"
 import { useRouter } from "next/navigation"
 import { Loader2 } from "lucide-react"
 import { useAuth } from "@/context/AuthContext"
+import BirthDatePicker from "@/components/ui/BirthDatePicker"
 
 export default function ProfileSetupPage() {
     const router = useRouter()
@@ -138,21 +139,11 @@ export default function ProfileSetupPage() {
                                 </div>
 
                                 {/* Date of Birth */}
-                                <div>
-                                    <label htmlFor="date_of_birth" className="block text-sm font-medium text-white drop-shadow-md">
-                                        Date of Birth (Optional)
-                                    </label>
-                                    <input
-                                        id="date_of_birth"
-                                        name="date_of_birth"
-                                        type="date"
-                                        value={formData.date_of_birth}
-                                        onChange={handleChange}
-                                        max={new Date().toISOString().split('T')[0]}
-                                        min={new Date(new Date().getFullYear() - 100, 0, 1).toISOString().split('T')[0]}
-                                        className="block w-full px-3 py-2 mt-1 placeholder-slate-400 bg-white/90 backdrop-blur-sm border rounded-lg border-white/30 focus:outline-none focus:ring-2 focus:ring-white/50 focus:border-white sm:text-sm [&::-webkit-calendar-picker-indicator]:cursor-pointer"
-                                    />
-                                </div>
+                                <BirthDatePicker
+                                    value={formData.date_of_birth}
+                                    onChange={(date) => setFormData({ ...formData, date_of_birth: date })}
+                                    label="Date of Birth (Optional)"
+                                />
 
                                 {/* Gender */}
                                 <div>
