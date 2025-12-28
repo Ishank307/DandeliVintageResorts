@@ -14,6 +14,7 @@ from .views import (
     ExploreView,
     MyBookingsView,
     BookingDetailView,
+    check_coupon,
     
 )
 
@@ -32,4 +33,5 @@ urlpatterns = [
     path('reviews/<int:pk>/', ReviewListView.as_view(), name='review-list'),
     path('my-bookings/', MyBookingsView.as_view(), name='my-bookings'),
     path('my-bookings/<int:booking_id>/', BookingDetailView.as_view(), name='booking-detail'),
+    path('coupon/', check_coupon, name='check-coupon'),
 ]

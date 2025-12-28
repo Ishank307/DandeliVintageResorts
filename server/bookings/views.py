@@ -618,3 +618,16 @@ class BookingDetailView(APIView):
         }
 
         return Response(response_data, status=status.HTTP_200_OK)
+
+
+
+
+
+@api_view(['GET'])
+def check_coupon(request):
+    coupon_code = request.query_params.get('coupon_code')
+    try:
+        coupon = Coupon.objects.get(code=coupon_code, active=True)
+        return Response({"valid": True, "discount": coupon.discount_percentage})
+    except Coupon.DoesNotExist:
+        return Response({"valid": False})
