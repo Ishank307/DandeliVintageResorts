@@ -5,7 +5,8 @@ import { Star, MapPin,Wifi } from "lucide-react"
 import { useRouter, useSearchParams } from "next/navigation"
 import { useState } from "react"
 import { parseISO,addDays } from "date-fns"
-export default function RoomCard({ room }) {
+export default function RoomCard({ room, context = "search" }) {
+
   const router = useRouter()
   const searchParams = useSearchParams()
 
@@ -24,20 +25,50 @@ export default function RoomCard({ room }) {
     1,
     Math.ceil((checkOut - checkIn) / MS_PER_DAY)
   )
+const isAvailable =
+  context === "explore"
+    ? true               // 🚨 IGNORE availability
+    : room.isAvailable   // search / hotel
 
 
   
-  const handleNavigate = () => {
-    router.push(`/hotels/${room.resort.id}?${searchParams.toString()}`)
-  }
+const handleNavigate = () => {
+  if (context !== "explore" && !isAvailable) return
+  router.push(`/hotels/${room.resort.id}?${searchParams.toString()}`)
+}
+
+
+//   if (!room.isAvailable) {
+//   return (
+//     <div className="text-center mt-24">
+//       <h2 className="text-xl font-bold">
+//         This resort is fully booked
+//       </h2>
+//       <p className="text-gray-500 mt-2">
+//         Please choose different dates or another stay
+//       </p>
+//     </div>
+//   )
+// }
+
 
   return (
 <div
   onClick={handleNavigate}
-  className="flex gap-6 p-6 rounded-2xl bg-white 
-             hover:bg-slate-50 transition 
-             ring-1 ring-slate-200/70 hover:ring-slate-300 cursor-pointer"
+  className={`flex gap-6 p-6 rounded-2xl transition
+    ${
+      isAvailable
+        ? "bg-slate-50/70 hover:bg-slate-50 cursor-pointer"
+        : "bg-slate-100 opacity-60 cursor-not-allowed"
+    }
+  `}
 >
+    {context !== "explore" && !isAvailable && (
+  <div className="absolute inset-0 bg-black/40 flex items-center justify-center text-white">
+    SOLD OUT
+  </div>
+)}
+
   {/* IMAGE */}
 <div className="relative w-60 self-stretch rounded-xl overflow-hidden bg-slate-200 shrink-0">
     {room.images?.[0]?.image && (
@@ -121,16 +152,25 @@ export default function RoomCard({ room }) {
         View Details
       </button> */}
 
-      <button
-        onClick={(e) => {
-          e.stopPropagation()
-          handleNavigate()
-        }}
-        className="px-4 py-2 rounded-md text-sm font-semibold
-                   bg-blue-600 hover:bg-blue-700 text-white"
-      >
-        Book Now
-      </button>
+{isAvailable ? (
+  <button
+    onClick={(e) => {
+      e.stopPropagation()
+      handleNavigate()
+    }}
+    className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-md"
+  >
+    Book Now
+  </button>
+) : (
+  <button
+    disabled
+    className="px-4 py-2 bg-gray-300 text-gray-600 rounded-md cursor-not-allowed"
+  >
+    Sold Out
+  </button>
+)}
+
     </div>
   </div>
 </div>

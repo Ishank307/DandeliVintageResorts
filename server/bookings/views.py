@@ -384,7 +384,7 @@ class VerifyPaymentView(APIView):
                 resort=booking_attempt.resort,
                 check_in=booking_attempt.check_in,
                 check_out=booking_attempt.check_out,
-                status='confirmed',
+                status='confirmed' if payment.type == 'full' else 'pending',
                 payment=payment
             )
             for attempt_room in BookingAttemptRooms.objects.filter(attempt=booking_attempt):
@@ -455,7 +455,6 @@ class ReviewListView(APIView):
     
     
     
-    
 class MyBookingsView(APIView):
     permission_classes = [IsAuthenticated]
 
@@ -464,10 +463,8 @@ class MyBookingsView(APIView):
             FinalBooking.objects
             .filter(user=request.user)
             .select_related("resort", "payment")
-            .prefetch_related(
-                "bookingroom_set__room"
-            )
-            .order_by("-created_at")
+            .prefetch_related("bookingroom_set__room")
+            .order_by("-id")
         )
 
         booking_list = []
@@ -483,7 +480,104 @@ class MyBookingsView(APIView):
                 "check_out": booking.check_out,
                 "status": booking.status,
                 "rooms": room_data,
-                "payment_status": getattr(booking.payment, "status", "N/A"),
+
+                # ✅ expose payment info (NO calculations)
+                "payment_status": booking.payment.status if booking.payment else "N/A",
+                "payment_type": booking.payment.type if booking.payment else None,
+                "payment": {
+                    "amount": float(booking.payment.amount)
+                } if booking.payment else None,
             })
 
         return Response(booking_list, status=status.HTTP_200_OK)
+
+class BookingDetailView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request, booking_id):
+        # Fetch the booking and ensure it belongs to the logged-in user
+        try:
+            booking = FinalBooking.objects.select_related(
+                "resort", "payment", "payment__attempt"
+            ).prefetch_related(
+                "bookingroom_set__room__images",
+                "bookingguest_set"
+            ).get(id=booking_id, user=request.user)
+        except FinalBooking.DoesNotExist:
+            return Response(
+                {"error": "Booking not found or does not belong to you."},
+                status=status.HTTP_404_NOT_FOUND
+            )
+
+        # Get all rooms for this booking
+        booking_rooms = booking.bookingroom_set.all()
+        rooms_data = []
+        
+        for br in booking_rooms:
+            room = br.room
+            room_images = []
+            
+            # Get room images
+            for img in room.images.all():
+                room_images.append(request.build_absolute_uri(img.image.url))
+            
+            rooms_data.append({
+                "id": room.id,
+                "room_number": room.room_number,
+                "room_type": f"{room.capacity} Person Room",  # You can customize this
+                "capacity": room.capacity,
+                "price_per_night": float(room.price_per_night),
+                "amenities": room.room_aminities or "",
+                "images": room_images[:1] if room_images else []  # First image only
+            })
+
+        # Calculate stay duration
+        check_in = booking.check_in
+        check_out = booking.check_out
+        nights = (check_out - check_in).days
+
+        # Get guest count from BookingGuest
+        total_guests = booking.bookingguest_set.count()
+
+        # Calculate total price
+        total_price = Decimal(0)
+        for room in booking_rooms:
+            total_price += room.room.price_per_night * nights
+
+        # Payment details
+        payment_data = None
+        if booking.payment:
+            payment_data = {
+                "id": booking.payment.id,
+                "amount": float(booking.payment.amount),
+                "status": booking.payment.get_status_display(),
+                "payment_method": booking.payment.provider,
+                "payment_type": booking.payment.get_type_display(),
+                "transaction_id": booking.payment.provider_payment_id,
+                "paid_at":  None  
+            }
+
+        # Build response
+        response_data = {
+            "booking_id": booking.id,
+            "booking_status": booking.get_status_display(),
+            "resort": {
+                "id": booking.resort.id,
+                "name": booking.resort.name,
+                "location": booking.resort.location,
+                "description": booking.resort.description or "",
+                "amenities": booking.resort.aminities or "",
+                "lat": float(booking.resort.lat) if booking.resort.lat else None,
+                "lng": float(booking.resort.lng) if booking.resort.lng else None,
+            },
+            "check_in_date": check_in.isoformat(),
+            "check_out_date": check_out.isoformat(),
+            "nights": nights,
+            "number_of_guests": total_guests,
+            "rooms": rooms_data,
+            "total_price": float(total_price),
+            "payment": payment_data,
+            "created_at": None,
+        }
+
+        return Response(response_data, status=status.HTTP_200_OK)

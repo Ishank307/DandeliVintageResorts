@@ -4,9 +4,8 @@ import { Card } from "@/components/ui/Card"
 import { Button } from "@/components/ui/Button"
 import { MapPin, Check, Calendar } from "lucide-react"
 import { useState } from "react"
-import { useRouter, useSearchParams } from "next/navigation"
 import DatePicker from "@/components/ui/DatePicker"
-import { format, parseISO, addDays } from "date-fns"
+import { format } from "date-fns"
 
 export default function HotelBookingCard({
   hotelName,
@@ -15,30 +14,25 @@ export default function HotelBookingCard({
   discountedPrice,
   discountPercentage,
   hotelId,
+  selectedRoom,
+  isAvailable, // This now reflects if the SELECTED room is available
+
+  /* 🔑 NEW PROPS */
+  checkIn,
+  checkOut,
+  guests,
+  onDateChange,
+  onGuestsChange,
 }) {
-  const router = useRouter()
-  const searchParams = useSearchParams()
-
-  /* -------------------- Dates (URL → State) -------------------- */
-  const [checkIn, setCheckIn] = useState(() => {
-    const ci = searchParams.get("check_in") || searchParams.get("checkIn")
-    return ci ? parseISO(ci) : new Date()
-  })
-
-  const [checkOut, setCheckOut] = useState(() => {
-    const co = searchParams.get("check_out") || searchParams.get("checkOut")
-    return co ? parseISO(co) : addDays(new Date(), 1)
-  })
-
   const [showDatePicker, setShowDatePicker] = useState(false)
-  const [roomType, setRoomType] = useState("classic")
-  const [guests, setGuests] = useState(
-    Number(searchParams.get("guests")) || 2
-  )
 
-  /* -------------------- Pricing Logic -------------------- */
+  /* ---------------- BOOKING STATE ---------------- */
+  // Check if we have a selected room AND if it's available
+  const bookingState =
+    !selectedRoom || !isAvailable ? "SOLD_OUT" : "AVAILABLE"
+
+  /* ---------------- Pricing ---------------- */
   const MS_PER_DAY = 1000 * 60 * 60 * 24
-
   const nights = Math.max(
     1,
     Math.ceil((checkOut - checkIn) / MS_PER_DAY)
@@ -50,33 +44,25 @@ export default function HotelBookingCard({
 
   const TAX_RATE = 0.18
   const taxesAndFees = Math.round(basePrice * TAX_RATE)
-
   const totalPrice = basePrice + taxesAndFees
 
-  /* -------------------- Handlers -------------------- */
-  const handleDateChange = (newCheckIn, newCheckOut) => {
-    setCheckIn(newCheckIn)
-    setCheckOut(newCheckOut)
-    setShowDatePicker(false)
-  }
-
   const handleBookNow = () => {
-    router.push(
+    if (bookingState !== "AVAILABLE") return
+    window.location.href =
       `/booking/${hotelId}` +
-        `?checkIn=${format(checkIn, "yyyy-MM-dd")}` +
-        `&checkOut=${format(checkOut, "yyyy-MM-dd")}` +
-        `&guests=${guests}` +
-        `&roomType=${roomType}`
-    )
+      `?room_id=${selectedRoom.id}` +
+      `&checkIn=${format(checkIn, "yyyy-MM-dd")}` +
+      `&checkOut=${format(checkOut, "yyyy-MM-dd")}` +
+      `&guests=${guests}`
   }
 
-  /* -------------------- UI -------------------- */
   return (
     <div className="lg:sticky lg:top-20">
       <Card className="p-6 shadow-lg border border-gray-200 bg-blue-50/50">
+
         {/* Hotel Info */}
         <div className="mb-4">
-          <h3 className="text-xl font-bold text-gray-900 mb-2">
+          <h3 className="text-xl font-bold text-gray-900 mb-1">
             {hotelName}
           </h3>
           <div className="flex items-center text-gray-600">
@@ -85,7 +71,15 @@ export default function HotelBookingCard({
           </div>
         </div>
 
-        {/* Price Header */}
+        {/* Selected Room Info */}
+        {selectedRoom && (
+          <div className="mb-4 p-3 bg-white rounded-lg border border-gray-200">
+            <p className="text-xs text-gray-500 mb-1">Selected Room</p>
+            <p className="text-sm font-semibold text-gray-900">{selectedRoom.room_type}</p>
+          </div>
+        )}
+
+        {/* Price */}
         <div className="mb-5">
           <div className="flex items-baseline gap-2 mb-1">
             <span className="text-3xl font-bold text-gray-900">
@@ -93,9 +87,6 @@ export default function HotelBookingCard({
             </span>
             <span className="text-lg text-gray-400 line-through">
               ₹{originalTotal}
-            </span>
-            <span className="text-xs font-semibold text-green-600 bg-green-100 px-2 py-1 rounded">
-              {discountPercentage}% off
             </span>
           </div>
           <p className="text-sm text-gray-500">
@@ -106,8 +97,8 @@ export default function HotelBookingCard({
         {/* Date Picker */}
         <div className="relative mb-4">
           <button
-            onClick={() => setShowDatePicker(!showDatePicker)}
-            className="w-full bg-white border border-gray-200 rounded-lg p-3 text-left hover:bg-gray-50"
+            onClick={() => setShowDatePicker(true)}
+            className="w-full bg-white border border-gray-200 rounded-lg p-3 text-left hover:border-gray-300 transition-colors"
           >
             <div className="flex items-center gap-2">
               <Calendar className="h-4 w-4 text-gray-500" />
@@ -133,100 +124,82 @@ export default function HotelBookingCard({
             <DatePicker
               checkIn={checkIn}
               checkOut={checkOut}
-              onDateChange={handleDateChange}
+              onDateChange={(ci, co) => {
+                onDateChange(ci, co) // 🔑 notify parent
+                setShowDatePicker(false)
+              }}
               onClose={() => setShowDatePicker(false)}
             />
           )}
         </div>
 
-        {/* Room & Guests */}
-        <div className="grid grid-cols-2 gap-3 mb-4">
-          <div className="bg-white border rounded-lg p-3">
-            <label className="text-xs text-gray-500 mb-1 block">
-              Room type
-            </label>
-            <select
-              value={roomType}
-              onChange={(e) => setRoomType(e.target.value)}
-              className="w-full text-sm font-medium outline-none"
-            >
-              <option value="classic">Classic</option>
-              <option value="deluxe">Deluxe</option>
-              <option value="suite">Suite</option>
-            </select>
-          </div>
-
-          <div className="bg-white border rounded-lg p-3">
-            <label className="text-xs text-gray-500 mb-1 block">
-              Guests
-            </label>
-            <select
-              value={guests}
-              onChange={(e) => setGuests(Number(e.target.value))}
-              className="w-full text-sm font-medium outline-none"
-            >
-              {[1, 2, 3, 4].map(g => (
-                <option key={g} value={g}>
-                  {g} guest{g > 1 ? "s" : ""}
-                </option>
-              ))}
-            </select>
-          </div>
+        {/* Guests */}
+        <div className="bg-white border rounded-lg p-3 mb-4">
+          <label className="text-xs text-gray-500 mb-1 block">
+            Guests
+          </label>
+          <select
+            value={guests}
+            onChange={(e) => onGuestsChange(Number(e.target.value))}
+            className="w-full text-sm font-medium outline-none bg-transparent"
+          >
+            {[1, 2, 3, 4].map(g => (
+              <option key={g} value={g}>
+                {g} guest{g > 1 ? "s" : ""}
+              </option>
+            ))}
+          </select>
         </div>
 
-        {/* Savings */}
         {savings > 0 && (
           <div className="bg-blue-100 border border-blue-200 rounded-md p-2.5 mb-3 flex gap-2">
             <Check className="h-4 w-4 text-blue-600 mt-0.5" />
-            <div>
-              <p className="text-xs font-semibold text-blue-900">
-                You’re saving ₹{savings}
-              </p>
-              <p className="text-[10px] text-blue-700">
-                compared to original price
-              </p>
-            </div>
+            <p className="text-xs font-semibold text-blue-900">
+              You're saving ₹{savings}
+            </p>
           </div>
         )}
-
-        {/* Price Breakdown */}
+    
+        {/* Breakdown */}
         <div className="space-y-2 mb-4 text-xs">
           <div className="flex justify-between">
-            <span className="text-gray-600">
-              ₹{discountedPrice} × {nights} night{nights > 1 ? "s" : ""}
-            </span>
+            <span>Room × {nights} nights</span>
             <span>₹{basePrice}</span>
           </div>
-
           <div className="flex justify-between">
-            <span className="text-gray-600">Taxes & fees (18%)</span>
+            <span>Taxes & fees</span>
             <span>₹{taxesAndFees}</span>
           </div>
-
           <div className="border-t pt-2 flex justify-between text-sm font-semibold">
             <span>Total</span>
             <span>₹{totalPrice}</span>
           </div>
-
-          <p className="text-[10px] text-gray-500">
-            Includes all applicable taxes
-          </p>
         </div>
+      
+        {/* Sold out text */}
+        {bookingState === "SOLD_OUT" && (
+          <p className="text-xs text-red-600 text-center mb-2 font-medium">
+            {!selectedRoom 
+              ? "Please select a room" 
+              : "This room is not available for selected dates"}
+          </p>
+        )}
 
         {/* CTA */}
         <Button
           onClick={handleBookNow}
-          className="w-full bg-primary hover:bg-primary/90 text-white py-3 text-base font-semibold rounded-lg"
+          disabled={bookingState !== "AVAILABLE"}
+          className={`w-full py-3 text-base font-semibold rounded-lg transition-colors
+            ${
+              bookingState === "AVAILABLE"
+                ? "bg-primary hover:bg-primary/90 text-white"
+                : "bg-gray-300 text-gray-600 cursor-not-allowed"
+            }
+          `}
         >
-          Book Now
+          {bookingState === "AVAILABLE" ? "Book now" : "Sold out"}
         </Button>
 
-        {/* Policies */}
-        <div className="mt-3 pt-3 border-t text-[10px] text-gray-500 space-y-1">
-          <p className="font-medium text-gray-600">Cancellation Policy</p>
-          <p>Follow safety measures advised at the hotel</p>
-          <p>By proceeding, you agree to our policies</p>
-        </div>
       </Card>
     </div>
   )

@@ -11,7 +11,7 @@ export default function SearchPage() {
   const location = searchParams.get("location")
   const checkInDate = searchParams.get("check_in")
   const checkOutDate = searchParams.get("check_out")
-  const guests = searchParams.get("guests")
+  const guests = Number(searchParams.get("guests"))
 
   const [results, setResults] = useState([])
   const [loading, setLoading] = useState(true)
@@ -21,21 +21,22 @@ export default function SearchPage() {
     async function fetchRooms() {
       try {
         setLoading(true)
+
         const data = await searchRooms({
           location,
           checkInDate,
           checkOutDate,
-          guests: Number(guests),
+          guests,
         })
 
         if (Array.isArray(data)) {
           setResults(data)
         } else {
           setResults([])
-          setError(data.message || "No resorts found")
+          setError(data?.message || "No resorts found")
         }
       } catch (err) {
-        setError(err.message)
+        setError(err.message || "Something went wrong")
       } finally {
         setLoading(false)
       }
@@ -65,13 +66,16 @@ export default function SearchPage() {
     )
   }
 
+  // ✅ RESORT-LEVEL ADAPTATION (CORRECT)
   const adaptedRooms = results.map((resort) => {
-    const cheapestRoom = resort.available_rooms?.[0]
+    const availableRooms = resort.available_rooms || []
+    const cheapestRoom = availableRooms[0] || null
 
     return {
-      id: `${resort.resort_id}-${cheapestRoom?.id || "room"}`,
+      id: `${resort.resort_id}-${cheapestRoom?.id || "sold-out"}`,
       price_per_night: cheapestRoom?.price_per_night || 0,
       images: cheapestRoom?.images || [],
+      isAvailable: availableRooms.length > 0, // 🔑 ONLY THIS
       resort: {
         id: resort.resort_id,
         name: resort.resort_name,
@@ -84,7 +88,7 @@ export default function SearchPage() {
     <main className="container mx-auto px-4 pt-6 pb-12">
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
 
-        {/* FILTERS (compact, OYO-style) */}
+        {/* FILTERS */}
         <aside className="lg:col-span-3 hidden lg:block">
           <div className="sticky top-24 border border-gray-200 rounded-xl p-4 bg-white">
             <h3 className="font-semibold text-lg mb-3">Filters</h3>
@@ -96,7 +100,6 @@ export default function SearchPage() {
 
         {/* RESULTS */}
         <section className="lg:col-span-9 space-y-5">
-          {/* HEADER */}
           <div className="border-b pb-3">
             <h2 className="text-2xl font-bold text-gray-900">
               {adaptedRooms.length} stays in {location}
@@ -106,10 +109,13 @@ export default function SearchPage() {
             </p>
           </div>
 
-          {/* LIST (IMPORTANT PART) */}
           <div className="space-y-6">
             {adaptedRooms.map((room) => (
-              <RoomCard key={room.id} room={room} />
+              <RoomCard
+                key={room.id}
+                room={room}
+                context="search"   // 🔑 IMPORTANT
+              />
             ))}
           </div>
         </section>

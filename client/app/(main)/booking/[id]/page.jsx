@@ -13,43 +13,6 @@ import { useRouter } from "next/navigation"
 import { getHotelDetails, getImageUrl ,addGuestDetails,selectRooms,formatDateForAPI,createRazorpayOrder,verifyPayment} from "@/lib/api";
 import { loadRazorpay } from "@/utils/loadRazorpay"
 
-// const loadBookingData = async ({
-//     resortId,
-//     checkInDate,
-//     checkOutDate,
-//     selectedRoom,
-//     appliedCoupon
-// }) => {
-//     const hotel = await getHotelDetails(resortId);
-
-//     const nights =
-//         (new Date(checkOutDate) - new Date(checkInDate)) /
-//         (1000 * 60 * 60 * 24);
-
-//     return {
-//         hotel: {
-//             name: hotel.name,
-//             rating: 4.5,              // static for now (no backend field)
-//             reviews: 188,             // static for now
-//             image: getImageUrl(selectedRoom.image),
-//         },
-
-//         booking: {
-//             checkIn: new Date(checkInDate).toDateString(),
-//             nights,
-//             roomType: selectedRoom.room_type,
-//         },
-
-//         pricing: {
-//             roomCharge: selectedRoom.price_per_night * nights,
-//             instantDiscount: 774,     // frontend logic
-//             wizardDiscount: 60,
-//             couponDiscount: appliedCoupon ? 500 : 0,
-//         },
-//     };
-// };
-
-
 
 export default function BookingPage() {
     const [currentStep, setCurrentStep] = useState(1) // 1 = Guest Details, 2 = Payment Options
@@ -62,12 +25,14 @@ export default function BookingPage() {
     const [bookingAttemptId, setBookingAttemptId] = useState(null)
     // const [selectedRoom, setSelectedRoom] = useState(null)
 
-const [isPaying, setIsPaying] = useState(false)
+    const [isPaying, setIsPaying] = useState(false)
 
     const checkInDate = searchParams.get("checkIn")
     const checkOutDate = searchParams.get("checkOut")
     const guests = Number(searchParams.get("guests"))
-    const roomType = searchParams.get("roomType")
+    // const roomType = searchParams.get("roomType")
+    const roomId = Number(searchParams.get("room_id"))
+
     const router = useRouter()
 
     // Guest details form
@@ -82,7 +47,9 @@ const [isPaying, setIsPaying] = useState(false)
         email: "",
         phone: ""
     })
-
+    const PARTIAL_PERCENTAGE = 20 // Must match Django settings
+// const [paymentMethod, setPaymentMethod] = useState("property") // property | now
+const [payNowType, setPayNowType] = useState("full") // full | partial
     const [bookingData, setBookingData] = useState(null);
     useEffect(() => {
         const saved = localStorage.getItem("bookingAttemptId")
@@ -96,9 +63,16 @@ const [isPaying, setIsPaying] = useState(false)
         async function init() {
             const hotel = await getHotelDetails(id)
             
-            const selectedRoom =
-                hotel.rooms.find(room => room.capacity >= guests) ||
-                hotel.rooms[0]
+            const selectedRoom = hotel.rooms.find(
+                room => room.id === roomId
+            )
+
+            if (!selectedRoom) {
+                alert("Selected room is no longer available.")
+                router.push(`/hotels/${id}`)
+                return
+            }
+
 
             const nights =
                 (new Date(checkOutDate) - new Date(checkInDate)) /
@@ -150,7 +124,16 @@ const [isPaying, setIsPaying] = useState(false)
         (bookingData?.pricing?.instantDiscount ?? 0) -
         (bookingData?.pricing?.wizardDiscount ?? 0) -
         (bookingData?.pricing?.couponDiscount ?? 0);
+    // const totalAmount = bookingData.total_price
 
+const totalAmount = total
+
+const payNowAmount =
+  payNowType === "partial"
+    ? Math.round((totalAmount * PARTIAL_PERCENTAGE) / 100)
+    : totalAmount
+
+const remainingAmount = totalAmount - payNowAmount
 
     const handleApplyCoupon = () => {
         if (couponCode.toUpperCase() === "SAVE500") {
@@ -204,179 +187,158 @@ const [isPaying, setIsPaying] = useState(false)
         return Object.keys(newErrors).length === 0
     }
 
-    const handleContinue = () => {
-        
-        if (validateGuestDetails()) {
-            setCurrentStep(2)
-        }
-    }
+ 
 
     const handleConfirmBooking = () => {
         // Handle booking confirmation
         alert("Booking confirmed!")
     }
 
-//======================bookings
-const handleSelectRooms = async () => {
-    const hotel = await getHotelDetails(id)
-            
-            const selectedRoom =
-                hotel.rooms.find(room => room.capacity >= guests) ||
-                hotel.rooms[0]
-    const res = await selectRooms({
-        resort_id: id,
-        room_ids: [selectedRoom.id],
-        check_in_date: formatDateForAPI(checkInDate),
-        check_out_date: formatDateForAPI(checkOutDate),
-        guests,
-    })
-
-    setBookingAttemptId(res.booking_attempt_id)
-    localStorage.setItem("bookingAttemptId", res.booking_attempt_id)
-}
 
 
 
 
-const handleAddGuests = async () => {
-  // 🚫 STOP immediately if details are invalid
-  if (!validateGuestDetails()) {
-    return;
-  }
-
-  const hotel = await getHotelDetails(id);
-
-  if (!hotel?.rooms?.length) {
-    alert("Room data not loaded yet. Please wait.");
-    return;
-  }
-
-  const selectedRoom =
-    hotel.rooms.find(room => room.capacity >= guests) ||
-    hotel.rooms[0];
-
-  if (!selectedRoom) {
-    alert("No suitable room found.");
-    return;
-  }
-
-  const res = await selectRooms({
-    resort_id: id,
-    room_ids: [selectedRoom.id],
-    check_in_date: formatDateForAPI(checkInDate),
-    check_out_date: formatDateForAPI(checkOutDate),
-    guests,
-  });
-
-  const attemptId = res.booking_attempt_id;
-  setBookingAttemptId(attemptId);
-  localStorage.setItem("bookingAttemptId", attemptId);
-
-  if (!attemptId) {
-    alert("Booking session expired. Please start again.");
-    return;
-  }
-
-  const guestDetailsList = Array.from({ length: guests }, () => ({
-    room_id: selectedRoom.id,
-    name: guestDetails.name,
-    age: 25,
-  }));
-
-  await addGuestDetails({
-    booking_attempt_id: attemptId,
-    guests: guestDetailsList,
-  });
-
-  setCurrentStep(2);
-};
-
-
-
-const handlePayNow = async () => {
-    try {
-        if (!bookingAttemptId) {
-            alert("Booking session expired. Please start again.")
-            return
+    const handleAddGuests = async () => {
+        // 🚫 STOP immediately if details are invalid
+        if (!validateGuestDetails()) {
+            return;
         }
 
-        setIsPaying(true)
+        const hotel = await getHotelDetails(id);
 
-        // 1️⃣ Load Razorpay SDK
-        const loaded = await loadRazorpay()
-        if (!loaded) {
-            alert("Razorpay SDK failed to load")
-            return
+        if (!hotel?.rooms?.length) {
+            alert("Room data not loaded yet. Please wait.");
+            return;
         }
 
-        // 2️⃣ Create Razorpay order (backend)
-        const orderData = await createRazorpayOrder({
-            booking_attempt_id: bookingAttemptId,
-        })
+        const selectedRoom = hotel.rooms.find(
+        room => room.id === roomId
+        )
 
-        /**
-         * Backend returns:
-         * {
-         *   order_id,
-         *   amount,
-         *   currency,
-         *   key,
-         *   booking_attempt_id,
-         *   payment_id
-         * }
-         */
-
-        // 3️⃣ Open Razorpay Checkout
-        const options = {
-            key: orderData.key,
-            amount: orderData.amount,
-            currency: orderData.currency,
-            order_id: orderData.order_id,
-
-            name: bookingData.hotel.name,
-            description: `Booking Attempt #${orderData.booking_attempt_id}`,
-
-            prefill: {
-                name: guestDetails.name,
-                email: guestDetails.email,
-                contact: guestDetails.phone,
-            },
-
-            handler: async function (response) {
-                // 4️⃣ Verify payment
-                const verifyRes = await verifyPayment({
-                    razorpay_order_id: response.razorpay_order_id,
-                    razorpay_payment_id: response.razorpay_payment_id,
-                    razorpay_signature: response.razorpay_signature,
-                })
-
-                if (verifyRes.success) {
-                    localStorage.removeItem("bookingAttemptId")
-                    router.push(`/booking/success/${verifyRes.booking_id}`)
-                } else {
-                    alert("Payment verification failed")
-                }
-            },
-
-            theme: {
-                color: "#0066FF",
-            },
+        if (!selectedRoom) {
+        alert("Selected room not found.")
+        return
         }
 
-        const rzp = new window.Razorpay(options)
 
-        rzp.on("payment.failed", () => {
-            alert("Payment failed. You can retry from My Bookings.")
-        })
+        const res = await selectRooms({
+            resort_id: id,
+            room_ids: [selectedRoom.id],
+            check_in_date: formatDateForAPI(checkInDate),
+            check_out_date: formatDateForAPI(checkOutDate),
+            guests,
+        });
 
-        rzp.open()
-    } catch (err) {
-        console.error(err)
-        alert(err.message || "Payment failed")
-    } finally {
-        setIsPaying(false)
+        const attemptId = res.booking_attempt_id;
+        setBookingAttemptId(attemptId);
+        localStorage.setItem("bookingAttemptId", attemptId);
+
+        if (!attemptId) {
+            alert("Booking session expired. Please start again.");
+            return;
+        }
+
+        const guestDetailsList = Array.from({ length: guests }, () => ({
+            room_id: selectedRoom.id,
+            name: guestDetails.name,
+            age: 25,
+        }));
+
+        await addGuestDetails({
+            booking_attempt_id: attemptId,
+            guests: guestDetailsList,
+        });
+
+        setCurrentStep(2);
+    };
+
+
+
+    const handlePayNow = async (paymentType = "full") => {
+        try {
+            if (!bookingAttemptId) {
+                alert("Booking session expired. Please start again.")
+                return
+            }
+
+            setIsPaying(true)
+
+            // 1️⃣ Load Razorpay SDK
+            const loaded = await loadRazorpay()
+            if (!loaded) {
+                alert("Razorpay SDK failed to load")
+                return
+            }
+
+            // 2️⃣ Create Razorpay order (backend)
+            const orderData = await createRazorpayOrder({
+                booking_attempt_id: bookingAttemptId,
+                payment_type: paymentType,
+            })
+
+            /**
+             * Backend returns:
+             * {
+             *   order_id,
+             *   amount,
+             *   currency,
+             *   key,
+             *   booking_attempt_id,
+             *   payment_id
+             * }
+             */
+
+            // 3️⃣ Open Razorpay Checkout
+            const options = {
+                key: orderData.key,
+                amount: orderData.amount,
+                currency: orderData.currency,
+                order_id: orderData.order_id,
+
+                name: bookingData.hotel.name,
+                description: `Booking Attempt #${orderData.booking_attempt_id}`,
+
+                prefill: {
+                    name: guestDetails.name,
+                    email: guestDetails.email,
+                    contact: guestDetails.phone,
+                },
+
+                handler: async function (response) {
+                    // 4️⃣ Verify payment
+                    const verifyRes = await verifyPayment({
+                        razorpay_order_id: response.razorpay_order_id,
+                        razorpay_payment_id: response.razorpay_payment_id,
+                        razorpay_signature: response.razorpay_signature,
+                    })
+
+                    if (verifyRes.success) {
+                        localStorage.removeItem("bookingAttemptId")
+                        router.push(`/booking/success/${verifyRes.booking_id}`)
+                    } else {
+                        alert("Payment verification failed")
+                    }
+                },
+
+                theme: {
+                    color: "#0066FF",
+                },
+            }
+
+            const rzp = new window.Razorpay(options)
+
+            rzp.on("payment.failed", () => {
+                alert("Payment failed. You can retry from My Bookings.")
+            })
+
+            rzp.open()
+        } catch (err) {
+            console.error(err)
+            alert(err.message || "Payment failed")
+        } finally {
+            setIsPaying(false)
+        }
     }
-}
 
     return (
         <div className="min-h-screen bg-gray-50">
@@ -529,79 +491,78 @@ const handlePayNow = async () => {
                                     </div>
 
                                     {/* Payment Options */}
-                                    <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200">
+                                        <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200">
                                         <div className="flex items-center gap-3 mb-4">
                                             <div className="w-8 h-8 bg-[#0066FF] text-white rounded-full flex items-center justify-center font-bold">
-                                                2
+                                            2
                                             </div>
-                                            <h2 className="text-xl font-semibold text-gray-800">Select payment method</h2>
+                                            <h2 className="text-xl font-semibold text-gray-800">
+                                            Select payment option
+                                            </h2>
                                         </div>
 
                                         <div className="space-y-4 ml-11">
-                                            {/* Pay at Property */}
-                                            <div
-                                                className={`p-5 rounded-lg border-2 cursor-pointer transition-all ${paymentMethod === "property"
-                                                    ? "border-green-500 bg-green-50"
-                                                    : "border-gray-200"
-                                                    }`}
-                                                onClick={() => setPaymentMethod("property")}
-                                            >
-                                                <label className="flex items-start cursor-pointer">
-                                                    <input
-                                                        type="radio"
-                                                        name="payment-option"
-                                                        value="property"
-                                                        checked={paymentMethod === "property"}
-                                                        onChange={() => setPaymentMethod("property")}
-                                                        className="h-5 w-5 text-[#0066FF] focus:ring-[#0066FF] border-gray-300 mt-0.5"
-                                                    />
-                                                    <div className="ml-4">
-                                                        <h3 className="font-semibold text-gray-900 text-base">Pay at property</h3>
-                                                        <p className="text-sm text-gray-500 mt-1">We will hold your reservation securely. Pay when you arrive.</p>
-                                                    </div>
-                                                </label>
-                                            </div>
 
-                                            {/* Pay Now */}
-                                            <div
-                                                className={`p-5 rounded-lg border-2 cursor-pointer transition-all ${paymentMethod === "now"
-                                                    ? "border-green-500 bg-green-50"
-                                                    : "border-gray-200"
-                                                    }`}
-                                                onClick={() => setPaymentMethod("now")}
+                                            {/* Pay Full */}
+                                            <label
+                                            className={`p-5 rounded-lg border-2 cursor-pointer flex gap-4 ${
+                                                payNowType === "full"
+                                                ? "border-green-500 bg-green-50"
+                                                : "border-gray-200"
+                                            }`}
                                             >
-                                                <label className="flex items-start cursor-pointer">
-                                                    <input
-                                                        type="radio"
-                                                        name="payment-option"
-                                                        value="now"
-                                                        checked={paymentMethod === "now"}
-                                                        onChange={() => setPaymentMethod("now")}
-                                                        className="h-5 w-5 text-[#0066FF] focus:ring-[#0066FF] border-gray-300 mt-0.5"
-                                                    />
-                                                    <div className="ml-4">
-                                                        <h3 className="font-semibold text-gray-900 text-base">Pay now</h3>
-                                                        <p className="text-sm text-gray-500 mt-1">Complete your payment securely online.</p>
-                                                    </div>
-                                                </label>
+                                            <input
+                                                type="radio"
+                                                name="payment-type"
+                                                value="full"
+                                                checked={payNowType === "full"}
+                                                onChange={() => setPayNowType("full")}
+                                                className="h-5 w-5 text-[#0066FF] mt-1"
+                                            />
+                                            <div>
+                                                <h3 className="font-semibold text-gray-900">Pay full amount</h3>
+                                                <p className="text-sm text-gray-500">
+                                                Pay the complete amount now and confirm your booking instantly.
+                                                </p>
                                             </div>
+                                            </label>
+
+                                            {/* Pay Partial */}
+                                            <label
+                                            className={`p-5 rounded-lg border-2 cursor-pointer flex gap-4 ${
+                                                payNowType === "partial"
+                                                ? "border-green-500 bg-green-50"
+                                                : "border-gray-200"
+                                            }`}
+                                            >
+                                            <input
+                                                type="radio"
+                                                name="payment-type"
+                                                value="partial"
+                                                checked={payNowType === "partial"}
+                                                onChange={() => setPayNowType("partial")}
+                                                className="h-5 w-5 text-[#0066FF] mt-1"
+                                            />
+                                            <div>
+                                                <h3 className="font-semibold text-gray-900">
+                                                Pay partial amount
+                                                </h3>
+                                                <p className="text-sm text-gray-500">
+                                                Pay {PARTIAL_PERCENTAGE}% now to reserve your stay. Balance payable at property.
+                                                </p>
+                                            </div>
+                                            </label>
 
                                             <Button
-                                                disabled={isPaying}
-                                                onClick={() => {
-                                                    if (paymentMethod === "now") {
-                                                        handlePayNow()
-                                                    } else {
-                                                        handleConfirmBooking()
-                                                    }
-                                                }}
-                                                className="w-full bg-[#0066FF] hover:bg-blue-700 text-white font-semibold py-3 mt-4"
+                                            disabled={isPaying}
+                                            onClick={() => handlePayNow(payNowType)}
+                                            className="w-full bg-[#0066FF] hover:bg-blue-700 text-white font-semibold py-3 mt-4"
                                             >
-                                                {isPaying ? "Processing payment..." : "Confirm Reservation"}
+                                            {isPaying ? "Processing payment..." : "Confirm & Pay"}
                                             </Button>
-
                                         </div>
-                                    </div>
+                                        </div>
+
                                 </>
                             )}
                         </div>
@@ -723,11 +684,29 @@ const handlePayNow = async () => {
                                 {/* Total */}
                                 <div className="flex justify-between items-baseline mb-2 pt-6 border-t border-gray-200">
                                     <span className="text-lg font-bold text-gray-900">Total</span>
-                                    <span className="text-2xl font-bold text-gray-900">₹{total}</span>
+<div className="pt-6 border-t border-gray-200 space-y-2">
+  <div className="flex justify-between items-baseline">
+    <span className="text-lg font-bold text-gray-900">
+      {payNowType === "partial" ? "Pay now" : "Total"}
+    </span>
+    <span className="text-2xl font-bold text-gray-900">
+      ₹{payNowAmount}
+    </span>
+  </div>
+
+  {payNowType === "partial" && (
+    <div className="flex justify-between text-sm text-gray-600">
+      <span>Pay at property</span>
+      <span>₹{remainingAmount}</span>
+    </div>
+  )}
+
+  <p className="text-xs text-gray-500 text-right">
+    Taxes included · No hidden charges
+  </p>
+</div>
+
                                 </div>
-                                <p className="text-xs text-gray-500 text-right">
-                                    Taxes included, No/hidden charges
-                                </p>
                             </div>
                         </div>
                     </div>

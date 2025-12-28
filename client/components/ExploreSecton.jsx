@@ -5,7 +5,7 @@ import RoomCard from "./RoomCard"
 export default function ExploreSection({ title, rooms }) {
   return (
     <section className="mb-16">
-      {/* Section Header */}
+      {/* Header */}
       <div className="mb-6">
         <h2 className="text-2xl font-bold text-slate-900">
           {title}
@@ -15,10 +15,14 @@ export default function ExploreSection({ title, rooms }) {
         </p>
       </div>
 
-      {/* Vertical List (IMPORTANT PART) */}
+      {/* Vertical list */}
       <div className="space-y-6">
         {rooms.map((room) => (
-          <RoomCard key={room.id} room={room} />
+          <RoomCard
+            key={room.id}
+            room={room}
+            context="explore"   // 🔑 tells RoomCard to IGNORE availability
+          />
         ))}
       </div>
     </section>

@@ -168,25 +168,62 @@ export const createBooking = async (bookingData) => {
 /**
  * Get all bookings for current user
 */
+// Get all user bookings
 export const getUserBookings = async () => {
     const token = getAuthToken();
-
+    
     if (!token) {
-        throw new Error('Authentication required. Please login first.');
+        throw new Error('Please login to view bookings');
     }
 
-    const response = await fetch(`${API_BASE_URL}/bookings/`, {
+    const response = await fetch(`${API_BASE_URL}/my-bookings/`, {
         method: 'GET',
         headers: {
             'Content-Type': 'application/json',
             'Authorization': `Bearer ${token}`,
         },
-        credentials: 'include',
     });
 
-    return handleResponse(response);
+    if (!response.ok) {
+        if (response.status === 401) {
+            throw new Error('Session expired. Please login again.');
+        }
+        const error = await response.json().catch(() => ({ error: 'Failed to fetch bookings' }));
+        throw new Error(error.error || error.message || 'Failed to fetch bookings');
+    }
+
+    return response.json();
 };
 
+// Get single booking detail
+export const getBookingDetail = async (bookingId) => {
+    const token = getAuthToken();
+    
+    if (!token) {
+        throw new Error('Please login to view booking details');
+    }
+
+    const response = await fetch(`${API_BASE_URL}/my-bookings/${bookingId}/`, {
+        method: 'GET',
+        headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`,
+        },
+    });
+
+    if (!response.ok) {
+        if (response.status === 401) {
+            throw new Error('Session expired. Please login again.');
+        }
+        if (response.status === 404) {
+            throw new Error('Booking not found');
+        }
+        const error = await response.json().catch(() => ({ error: 'Failed to fetch booking details' }));
+        throw new Error(error.error || error.message || 'Failed to fetch booking details');
+    }
+
+    return response.json();
+};
 // ==================== Utility Functions ====================
 
 /**

@@ -1,10 +1,24 @@
+// app/(dashboard)/layout.jsx - UPDATE THE LOGOUT BUTTON
+
+"use client"
+
 import Link from "next/link"
 import Header from "@/components/layout/BookingHeader"
 import Footer from "@/components/layout/Footer"
 import { Button } from "@/components/ui/Button"
 import { User, Calendar, Settings, LogOut } from "lucide-react"
+import { useAuth } from "@/context/AuthContext"
+import { useRouter } from "next/navigation"
 
 export default function DashboardLayout({ children }) {
+    const { logout } = useAuth()
+    const router = useRouter()
+
+    const handleLogout = () => {
+        logout()
+        router.push("/")
+    }
+
     return (
         <div className="flex min-h-screen flex-col">
             <Header />
@@ -30,7 +44,11 @@ export default function DashboardLayout({ children }) {
                                 Settings
                             </Button>
                         </Link>
-                        <Button variant="ghost" className="w-full justify-start text-destructive hover:text-destructive hover:bg-destructive/10">
+                        <Button 
+                            variant="ghost" 
+                            className="w-full justify-start text-destructive hover:text-destructive hover:bg-destructive/10"
+                            onClick={handleLogout}
+                        >
                             <LogOut className="mr-2 h-4 w-4" />
                             Logout
                         </Button>
