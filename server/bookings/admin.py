@@ -11,12 +11,13 @@ from .models import (
     FinalBooking,
     BookingRoom,
     BookingGuest,
-    Review
+    Review,
+    Coupon
 )
 
 admin.site.register(User)
 admin.site.register(Resort)
-
+admin.site.register(Coupon)
 admin.site.register(BookingAttempt)
 admin.site.register(BookingAttemptRooms)
 admin.site.register(GuestTemp)
