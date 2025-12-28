@@ -13,6 +13,7 @@ This project is a Django-based REST API for a resort booking system. It features
     3.  Adding guest details.
     4.  Creating a Razorpay order.
     5.  Confirming the booking upon successful client-side payment verification.
+- **Coupon System:** Search and apply discount codes to bookings directly.
 - **Scalable Architecture:** The separation of booking attempts from final bookings minimizes race conditions and improves reliability.
 
 ## Getting Started
@@ -175,9 +176,12 @@ Calculates the total price and creates a Razorpay order.
 **Request Body:**
 ```json
 {
-    "booking_attempt_id": 123
+    "booking_attempt_id": 123,
+    "coupon_code": "SAVE10" // Optional
 }
 ```
+
+**Note:** If `coupon_code` is provided, it is validated. If invalid or expired, a `400 Bad Request` is returned with `{"error": "Invalid or expired coupon code."}`.
 
 **Response:**
 ```json

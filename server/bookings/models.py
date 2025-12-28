@@ -107,6 +107,7 @@ class BookingAttempt(models.Model):
     guest_count = models.PositiveIntegerField()
     expires_at = models.DateTimeField()
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='pending')
+    coupon = models.ForeignKey('Coupon', on_delete=models.SET_NULL, null=True, blank=True)
 
 class BookingAttemptRooms(models.Model):
     attempt = models.ForeignKey(BookingAttempt, on_delete=models.CASCADE)
@@ -161,12 +162,13 @@ class BookingGuest(models.Model):
 
 
 
-class Coupen(models.Model):
-    code = models.CharField(max_length=10, unique=True)
-    discount = models.DecimalField(max_digits=5, decimal_places=2)
+class Coupon(models.Model):
+    code = models.CharField(max_length=20, unique=True)
+    discount_percentage = models.PositiveIntegerField(default=0)
+    active = models.BooleanField(default=True)
     
     def __str__(self):
-        return self.code
+        return f"{self.code} ({self.discount_percentage}%)"
 
 
 

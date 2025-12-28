@@ -2,7 +2,7 @@
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status
-from .models import Room, Resort, OTP, User, BookingAttempt, BookingAttemptRooms, GuestTemp, Payment, FinalBooking, BookingRoom, BookingGuest,Review
+from .models import Room, Resort, OTP, User, BookingAttempt, BookingAttemptRooms, GuestTemp, Payment, FinalBooking, BookingRoom, BookingGuest,Review, Coupon
 from .serializers import RoomSerializer, ReviewSerializer
 from django.db.models import Q, Sum
 from datetime import datetime, timedelta
@@ -143,6 +143,8 @@ class HotelDetailView(APIView):
         }
 
         return Response(resort_data, status=status.HTTP_200_OK)
+
+
 
 class RoomSearchView(APIView):
     permission_classes = [AllowAny]
@@ -291,6 +293,7 @@ class CreateRazorpayOrderView(APIView):
     def post(self, request):
         booking_attempt_id = request.data.get("booking_attempt_id")
         payment_type = request.data.get("payment_type", "full")
+        coupon_code = request.data.get("coupon_code")
 
         if not booking_attempt_id:
             return Response({"error": "Missing booking_attempt_id"}, status=status.HTTP_400_BAD_REQUEST)
@@ -310,6 +313,20 @@ class CreateRazorpayOrderView(APIView):
         if total_price <= 0:
             return Response({"error": "Calculated amount must be greater than zero."}, status=status.HTTP_400_BAD_REQUEST)
         
+        # Apply Coupon
+        if coupon_code:
+            try:
+                coupon = Coupon.objects.get(code=coupon_code, active=True)
+                discount_amount = (total_price * Decimal(coupon.discount_percentage)) / Decimal(100)
+                total_price -= discount_amount
+                booking_attempt.coupon = coupon
+                booking_attempt.save()
+            except Coupon.DoesNotExist:
+                return Response({"error": "Invalid or expired coupon code."}, status=status.HTTP_400_BAD_REQUEST)
+        
+        if total_price < 0:
+            total_price = Decimal(0)
+
         amount_to_pay = total_price
         if payment_type == 'partial':
              percentage = Decimal(settings.PARTIAL_PAYMENT_PERCENTAGE) / Decimal(100)
@@ -396,9 +413,11 @@ class VerifyPaymentView(APIView):
                 status='confirmed' if payment.type == 'full' else 'pending',
                 payment=payment
             )
+            print(1)
             for attempt_room in BookingAttemptRooms.objects.filter(attempt=booking_attempt):
                 BookingRoom.objects.create(booking=final_booking, room=attempt_room.room)
             
+            print(2)
             for guest_temp in GuestTemp.objects.filter(attempt=booking_attempt):
                 BookingGuest.objects.create(
                     booking=final_booking,
@@ -406,18 +425,23 @@ class VerifyPaymentView(APIView):
                     name=guest_temp.name,
                     age=guest_temp.age
                 )
+            print(3)
             booking_attempt.status = 'completed'
             
             
+            print(4)
             booking_attempt.save()
-            send_invoice_email_enqueue(final_booking)
+            print(4.5)
+            send_invoice_email_enqueue(final_booking.id)
             # TODO: Add a task to send booking confirmation emails
             # send_booking_emails_task.delay(final_booking.id)
+            print(5)
             return Response({
                 "success": True,
                 "message": "Payment verified successfully",
                 "booking_id": final_booking.id
             })
+            print(6)
         except razorpay.errors.SignatureVerificationError:
             return Response(
                 {"success": False, "message": "Payment verification failed"},
@@ -425,6 +449,7 @@ class VerifyPaymentView(APIView):
             )
         except Exception as e:
             # Generic error for any other issues
+            print(f"Error during payment verification: {str(e)}")
             return Response(
                 {"success": False, "message": f"An unexpected error occurred: {str(e)}"},
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR

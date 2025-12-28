@@ -148,9 +148,12 @@ Calculates the total price for the booking attempt and creates a Razorpay order.
 **Request Body:**
 ```json
 {
-    "booking_attempt_id": 123
+    "booking_attempt_id": 123,
+    "coupon_code": "SAVE10" // Optional
 }
 ```
+
+**Note:** If `coupon_code` is provided, the backend validates it. If the coupon is invalid or expired, the API returns `400 Bad Request` with `{"error": "Invalid or expired coupon code."}`.
 
 **Response:**
 The frontend should use these details to open the Razorpay payment dialog.
