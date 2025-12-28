@@ -9,7 +9,7 @@ import Link from "next/link"
 export default function BookingSuccess({ params }) {
     const router = useRouter()
     const [isAnimated, setIsAnimated] = useState(false)
-
+    // just did this
     // Unwrap params Promise for Next.js 15+
     const { id: bookingId } = use(params)
 
@@ -17,7 +17,7 @@ export default function BookingSuccess({ params }) {
         // Trigger animation after component mounts
         setTimeout(() => setIsAnimated(true), 100)
     }, [])
-    //trigger animation after component mounts
+    //trigger animation after component mounts .
     return (
         <div className="min-h-screen bg-gradient-to-br from-green-50 via-blue-50 to-purple-50 flex items-center justify-center p-4">
             <div className={`max-w-2xl w-full transition-all duration-700 ${isAnimated ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-10'}`}>
