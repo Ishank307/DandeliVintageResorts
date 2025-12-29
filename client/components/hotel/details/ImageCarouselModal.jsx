@@ -59,14 +59,7 @@ export default function ImageCarouselModal({ images, initialIndex = 0, isOpen, o
                     {currentIndex + 1} / {images.length}
                 </div>
 
-                <div className="flex items-center gap-4">
-                    <button className="text-white hover:text-gray-300 transition-colors">
-                        <Share className="h-5 w-5" />
-                    </button>
-                    <button className="text-white hover:text-gray-300 transition-colors">
-                        <Heart className="h-5 w-5" />
-                    </button>
-                </div>
+                
             </div>
 
             {/* Main Image */}

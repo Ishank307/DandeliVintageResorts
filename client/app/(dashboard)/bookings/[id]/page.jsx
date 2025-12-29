@@ -290,29 +290,29 @@ const remainingAmount = Math.max(totalAmount - amountPaid, 0)
                                                 <span>₹{(room.price_per_night * booking.nights).toFixed(0)}</span>
                                             </div>
                                         ))}
-<div className="mt-4 space-y-2">
-  {/* Amount Paid */}
-  <div className="flex justify-between py-3 bg-green-50 -mx-6 px-6 rounded">
-    <span className="font-semibold text-lg text-green-800">
-      Amount Paid
-    </span>
-    <span className="font-bold text-2xl text-green-700">
-      ₹{amountPaid.toLocaleString()}
-    </span>
-  </div>
+                                        <div className="mt-4 space-y-2">
+                                        {/* Amount Paid */}
+                                        <div className="flex justify-between py-3 bg-green-50 -mx-6 px-6 rounded">
+                                            <span className="font-semibold text-lg text-green-800">
+                                            Amount Paid
+                                            </span>
+                                            <span className="font-bold text-2xl text-green-700">
+                                            ₹{amountPaid.toLocaleString()}
+                                            </span>
+                                        </div>
 
-  {/* Remaining Amount – only for partial */}
-  {isPartial && (
-    <div className="flex justify-between py-3 bg-orange-50 -mx-6 px-6 rounded">
-      <span className="font-semibold text-lg text-orange-800">
-        Remaining Amount
-      </span>
-      <span className="font-bold text-xl text-orange-700">
-        ₹{remainingAmount.toLocaleString()}
-      </span>
-    </div>
-  )}
-</div>
+                                        {/* Remaining Amount – only for partial */}
+                                        {isPartial && (
+                                            <div className="flex justify-between py-3 bg-orange-50 -mx-6 px-6 rounded">
+                                            <span className="font-semibold text-lg text-orange-800">
+                                                Remaining Amount
+                                            </span>
+                                            <span className="font-bold text-xl text-orange-700">
+                                                ₹{remainingAmount.toLocaleString()}
+                                            </span>
+                                            </div>
+                                        )}
+                                        </div>
 
                                     </div>
                                 </div>

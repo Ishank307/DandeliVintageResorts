@@ -8,7 +8,8 @@ import {
   getReviewsByResort,
   searchRooms,
 } from "@/lib/api"
-
+import Link from "next/link"
+import  {ChevronLeft} from 'lucide-react'
 import HotelImageGallery from "@/components/hotel/details/HotelImageGallery"
 import HotelBookingCard from "@/components/hotel/details/HotelBookingCard"
 import HotelAbout from "@/components/hotel/details/HotelAbout"
@@ -327,6 +328,13 @@ export default function HotelDetailsPage() {
   return (
     <div className="min-h-screen bg-white">
       <div className="container mx-auto px-6 md:px-12 lg:px-16 xl:px-24 py-6">
+      <Link
+          href={`/search?location=${encodeURIComponent(searchParams.get('location'))}&check_in=${format(checkIn, "yyyy-MM-dd")}&check_out=${format(checkOut, "yyyy-MM-dd")}&guests=${guests}`}
+          className="flex items-center text-gray-600 hover:text-gray-900 transition-colors"
+      >
+          <ChevronLeft className="h-5 w-5" />
+          <span className="ml-1 text-sm font-medium">Back to search page</span>
+      </Link>
         <h1 className="text-2xl md:text-3xl font-bold mb-6">{hotel.name}</h1>
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
