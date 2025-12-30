@@ -6,7 +6,7 @@ import Link from "next/link"
 import Header from "@/components/layout/BookingHeader"
 import Footer from "@/components/layout/Footer"
 import { Button } from "@/components/ui/Button"
-import { User, Calendar, Settings, LogOut } from "lucide-react"
+import { User, Calendar, Settings, LogOut ,ChevronLeft} from "lucide-react"
 import { useAuth } from "@/context/AuthContext"
 import { useRouter } from "next/navigation"
 
@@ -26,6 +26,12 @@ export default function DashboardLayout({ children }) {
                 <div className="flex flex-col md:flex-row gap-8">
                     {/* Sidebar */}
                     <aside className="w-full md:w-64 space-y-2">
+                        <Link href="/">
+                            <Button variant="ghost" className="w-full justify-start">
+                                <ChevronLeft className="mr-2 h-4 w-4" />
+                                 go back
+                            </Button>
+                        </Link>
                         <Link href="/profile">
                             <Button variant="ghost" className="w-full justify-start">
                                 <User className="mr-2 h-4 w-4" />
@@ -38,12 +44,7 @@ export default function DashboardLayout({ children }) {
                                 My Bookings
                             </Button>
                         </Link>
-                        <Link href="/settings">
-                            <Button variant="ghost" className="w-full justify-start">
-                                <Settings className="mr-2 h-4 w-4" />
-                                Settings
-                            </Button>
-                        </Link>
+                        
                         <Button 
                             variant="ghost" 
                             className="w-full justify-start text-destructive hover:text-destructive hover:bg-destructive/10"
