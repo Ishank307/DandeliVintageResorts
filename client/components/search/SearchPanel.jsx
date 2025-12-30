@@ -4,7 +4,7 @@ import { useState, useEffect, useRef } from "react"
 import { ArrowLeft, X, MapPin } from "lucide-react"
 import { Input } from "@/components/ui/Input"
 import DatePicker from "@/components/ui/DatePicker"
-import RoomGuestPicker from "@/components/ui/RoomGuestPicker"
+import GuestPicker from "@/components/ui/GuestPicker"
 import { Button } from "@/components/ui/Button"
 
 const STEPS = {
@@ -18,10 +18,10 @@ export default function SearchPanel({
     location,
     checkIn,
     checkOut,
-    rooms,
+    guests,
     onLocationChange,
     onDateChange,
-    onRoomsChange,
+    onGuestsChange,
     onClose
 }) {
     const [currentStep, setCurrentStep] = useState(STEPS[mode]?.index || 0)
@@ -54,8 +54,8 @@ export default function SearchPanel({
         setCurrentStep(2)
     }
 
-    const handleRoomsChangeInternal = (newRooms) => {
-        onRoomsChange(newRooms)
+    const handleGuestsChangeInternal = (newGuests) => {
+        onGuestsChange(newGuests)
         onClose()
     }
 
@@ -141,9 +141,9 @@ export default function SearchPanel({
 
                         {/* Step 3: Guests */}
                         <div className="w-full p-6" style={{ width: 'calc(100% / 3)' }}>
-                            <RoomGuestPicker
-                                rooms={rooms}
-                                onRoomsChange={handleRoomsChangeInternal}
+                            <GuestPicker
+                                guests={guests}
+                                onGuestsChange={handleGuestsChangeInternal}
                                 onClose={onClose}
                                 insidePanel={true}
                             />

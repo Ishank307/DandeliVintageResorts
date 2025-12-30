@@ -1,8 +1,7 @@
-"use client"
-
+import Link from "next/link"
 import { Button } from "@/components/ui/Button"
 import DatePicker from "@/components/ui/DatePicker"
-import RoomGuestPicker from "@/components/ui/RoomGuestPicker"
+import GuestPicker from "@/components/ui/GuestPicker"
 import LocationPopover from "@/components/search/LocationPopover"
 import { Search } from "lucide-react"
 import { useState } from "react"
@@ -16,40 +15,41 @@ import { parseISO } from "date-fns"
 export default function SearchBar() {
     const router = useRouter()
     const searchParams = useSearchParams()
-    
-        // Popover states
-        const [showLocation, setShowLocation] = useState(false)
-        const [showDates, setShowDates] = useState(false)
-        const [showGuests, setShowGuests] = useState(false)
+
+    // Popover states
+    const [showLocation, setShowLocation] = useState(false)
+    const [showDates, setShowDates] = useState(false)
+    const [showGuests, setShowGuests] = useState(false)
     const [location, setLocation] = useState(
-    searchParams.get("location") || "Dandeli, Karnataka, India"
+        searchParams.get("location") || "Dandeli, Karnataka, India"
     )
 
     const [checkInDate, setCheckInDate] = useState(
-    searchParams.get("check_in")
-        ? parseISO(searchParams.get("check_in"))
-        : new Date()
+        searchParams.get("check_in")
+            ? parseISO(searchParams.get("check_in"))
+            : new Date()
     )
 
     const [checkOutDate, setCheckOutDate] = useState(
-    searchParams.get("check_out")
-        ? parseISO(searchParams.get("check_out"))
-        : addDays(new Date(), 1)
+        searchParams.get("check_out")
+            ? parseISO(searchParams.get("check_out"))
+            : addDays(new Date(), 1)
     )
 
-    const [rooms, setRooms] = useState([
-    { guests: Number(searchParams.get("guests")) || 2 },
-    ])
+    // Simplified state: just track total guests
+    const [guests, setGuests] = useState(
+        Number(searchParams.get("guests")) || 2
+    )
 
     const handleSearch = (e) => {
         e.preventDefault()
 
-        if (!location || !checkInDate || !checkOutDate || totalGuests < 1) {
+        if (!location || !checkInDate || !checkOutDate || guests < 1) {
             return
         }
 
         router.push(
-            `/search?location=${encodeURIComponent(location)}&check_in=${format(checkInDate, "yyyy-MM-dd")}&check_out=${format(checkOutDate, "yyyy-MM-dd")}&guests=${totalGuests}`
+            `/search?location=${encodeURIComponent(location)}&check_in=${format(checkInDate, "yyyy-MM-dd")}&check_out=${format(checkOutDate, "yyyy-MM-dd")}&guests=${guests}`
         )
     }
 
@@ -60,8 +60,8 @@ export default function SearchBar() {
         setShowDates(false)
     }
 
-    const handleRoomsChange = (newRooms) => {
-        setRooms(newRooms)
+    const handleGuestsChange = (newGuestCount) => {
+        setGuests(newGuestCount)
         setShowGuests(false)
     }
 
@@ -75,8 +75,7 @@ export default function SearchBar() {
             ? `${format(checkInDate, "MMM dd")} - ${format(checkOutDate, "MMM dd")}`
             : "Add dates"
 
-    const totalGuests = rooms.reduce((sum, room) => sum + room.guests, 0)
-    const formattedRoomsGuests = `${totalGuests} guest${totalGuests > 1 ? "s" : ""}`
+    const formattedGuests = `${guests} guest${guests > 1 ? "s" : ""}`
 
     return (
         <form
@@ -147,13 +146,13 @@ export default function SearchBar() {
                 }}
             >
                 <label className="text-xs font-semibold text-gray-900 mb-0.5">Who</label>
-                <div className="text-sm text-gray-600">{formattedRoomsGuests}</div>
+                <div className="text-sm text-gray-600">{formattedGuests}</div>
 
                 {showGuests && (
                     <div onClick={(e) => e.stopPropagation()}>
-                        <RoomGuestPicker
-                            rooms={rooms}
-                            onRoomsChange={handleRoomsChange}
+                        <GuestPicker
+                            guests={guests}
+                            onGuestsChange={handleGuestsChange}
                             onClose={() => setShowGuests(false)}
                         />
                     </div>
