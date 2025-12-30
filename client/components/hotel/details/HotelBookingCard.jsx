@@ -4,7 +4,7 @@ import { Card } from "@/components/ui/Card"
 import { Button } from "@/components/ui/Button"
 import { MapPin, Calendar, Users, Plus, Minus } from "lucide-react"
 import { useState, useMemo } from "react"
-import DatePicker from "@/components/ui/DatePicker"
+import HotelDatePicker from "@/components/ui/HotelDatePicker"
 import { format } from "date-fns"
 
 export default function HotelBookingCard({
@@ -51,7 +51,7 @@ export default function HotelBookingCard({
 
   const handleBookNow = () => {
     if (!canBook) return
-    
+
     const roomIds = selectedRoomDetails.map(r => r.id).join(',')
     window.location.href =
       `/booking/${hotelId}` +
@@ -95,9 +95,8 @@ export default function HotelBookingCard({
               </div>
               <div className="flex justify-between text-sm">
                 <span className="text-gray-700">Capacity</span>
-                <span className={`font-semibold ${
-                  hasEnoughCapacity ? 'text-green-600' : 'text-red-600'
-                }`}>
+                <span className={`font-semibold ${hasEnoughCapacity ? 'text-green-600' : 'text-red-600'
+                  }`}>
                   {totalCapacity} guests
                 </span>
               </div>
@@ -149,7 +148,7 @@ export default function HotelBookingCard({
           </button>
 
           {showDatePicker && (
-            <DatePicker
+            <HotelDatePicker
               checkIn={checkIn}
               checkOut={checkOut}
               onDateChange={(ci, co) => {
@@ -170,7 +169,7 @@ export default function HotelBookingCard({
                 Guests
               </label>
             </div>
-            
+
             <div className="flex items-center gap-3">
               <button
                 onClick={handleGuestDecrement}
@@ -180,11 +179,11 @@ export default function HotelBookingCard({
               >
                 <Minus className="h-4 w-4 text-gray-700" />
               </button>
-              
+
               <span className="font-bold text-xl min-w-[45px] text-center text-gray-900">
                 {guests}
               </span>
-              
+
               <button
                 onClick={handleGuestIncrement}
                 disabled={guests >= maxPossibleCapacity}
@@ -195,7 +194,7 @@ export default function HotelBookingCard({
               </button>
             </div>
           </div>
-          
+
           <p className="text-xs text-gray-500 mt-2 text-right">
             Max: {maxPossibleCapacity} guests
           </p>

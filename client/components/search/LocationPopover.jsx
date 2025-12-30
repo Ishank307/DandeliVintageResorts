@@ -6,23 +6,26 @@ import { Input } from "@/components/ui/Input"
 
 export default function LocationPopover({ value, onChange, onClose }) {
     const [searchText, setSearchText] = useState(value)
+    const [recentSearches, setRecentSearches] = useState([])
     const popoverRef = useRef(null)
 
-    // Popular destinations
     const popularDestinations = [
+        "Dandeli, India",
+        "Gokarna, India",
         "Goa, India",
-        "Mumbai, India",
-        "Bangalore, India",
-        "Delhi, India",
-        "Jaipur, India",
-        "Kerala, India"
     ]
 
-    // Recent searches (mock data)
-    const recentSearches = [
-        "Hubli-Dharwad, Karnataka",
-        "Goa Beach Resort"
-    ]
+    // Load recent searches from localStorage on mount
+    useEffect(() => {
+        const stored = localStorage.getItem('recentSearches')
+        if (stored) {
+            try {
+                setRecentSearches(JSON.parse(stored))
+            } catch (e) {
+                setRecentSearches([])
+            }
+        }
+    }, [])
 
     useEffect(() => {
         const handleClickOutside = (event) => {
@@ -35,6 +38,11 @@ export default function LocationPopover({ value, onChange, onClose }) {
     }, [onClose])
 
     const handleSelect = (destination) => {
+        // Add to recent searches (max 5, no duplicates)
+        const updated = [destination, ...recentSearches.filter(s => s !== destination)].slice(0, 5)
+        setRecentSearches(updated)
+        localStorage.setItem('recentSearches', JSON.stringify(updated))
+
         onChange(destination)
     }
 
@@ -44,7 +52,7 @@ export default function LocationPopover({ value, onChange, onClose }) {
             className="absolute top-full left-0 mt-2 z-50 w-[360px] bg-white rounded-xl shadow-2xl border border-gray-100 overflow-hidden animate-in fade-in slide-in-from-top-2 duration-200"
         >
             {/* Search Input */}
-            <div className="p-4 border-b border-gray-100">
+            {/* <div className="p-4 border-b border-gray-100">
                 <div className="relative">
                     <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
                     <Input
@@ -55,7 +63,7 @@ export default function LocationPopover({ value, onChange, onClose }) {
                         autoFocus
                     />
                 </div>
-            </div>
+            </div> */}
 
             {/* Recent Searches */}
             {recentSearches.length > 0 && (
@@ -78,7 +86,7 @@ export default function LocationPopover({ value, onChange, onClose }) {
             )}
 
             {/* Popular Destinations */}
-            <div className="p-2 border-t border-gray-100">
+            <div className={`p-2 ${recentSearches.length > 0 ? 'border-t border-gray-100' : ''}`}>
                 <div className="px-3 py-2 text-xs font-semibold text-gray-500 uppercase">Popular</div>
                 {popularDestinations.map((destination, idx) => (
                     <button

@@ -9,7 +9,7 @@ import {
   searchRooms,
 } from "@/lib/api"
 import Link from "next/link"
-import  {ChevronLeft} from 'lucide-react'
+import { ChevronLeft } from 'lucide-react'
 import HotelImageGallery from "@/components/hotel/details/HotelImageGallery"
 import HotelBookingCard from "@/components/hotel/details/HotelBookingCard"
 import HotelAbout from "@/components/hotel/details/HotelAbout"
@@ -21,7 +21,7 @@ import HotelReviews from "@/components/hotel/details/HotelReviews"
 // Helper: Categorize rooms by capacity
 function categorizeRooms(rooms) {
   const categories = {}
-  
+
   rooms.forEach(room => {
     const capacity = room.capacity
     if (!categories[capacity]) {
@@ -29,7 +29,7 @@ function categorizeRooms(rooms) {
     }
     categories[capacity].push(room)
   })
-  
+
   return Object.entries(categories)
     .sort(([a], [b]) => Number(a) - Number(b))
     .slice(0, 3)
@@ -44,63 +44,63 @@ function categorizeRooms(rooms) {
 // Helper: Smart room selection - MINIMIZE COST
 function smartSelectRooms(categories, guests, availableRoomIds) {
   const allCombinations = []
-  
+
   function generateCombinations(remaining, categoryIndex, current, totalCost) {
     if (remaining <= 0) {
-      allCombinations.push({ 
-        combination: {...current}, 
-        totalCost 
+      allCombinations.push({
+        combination: { ...current },
+        totalCost
       })
       return
     }
-    
+
     if (categoryIndex >= categories.length) {
       return
     }
-    
+
     const category = categories[categoryIndex]
     const available = category.rooms.filter(r => availableRoomIds.has(r.id))
     const maxAvailable = available.length
-    
+
     if (maxAvailable === 0) {
       generateCombinations(remaining, categoryIndex + 1, current, totalCost)
       return
     }
-    
+
     const maxNeeded = Math.ceil(remaining / category.capacity)
     const maxToTry = Math.min(maxAvailable, maxNeeded + 1)
-    
+
     for (let count = 0; count <= maxToTry; count++) {
       const newRemaining = remaining - (count * category.capacity)
       const newCost = totalCost + (count * category.minPrice)
-      const newCurrent = {...current}
-      
+      const newCurrent = { ...current }
+
       if (count > 0) {
         newCurrent[category.capacity] = count
       }
-      
+
       generateCombinations(newRemaining, categoryIndex + 1, newCurrent, newCost)
     }
   }
-  
+
   generateCombinations(guests, 0, {}, 0)
-  
+
   const validCombinations = allCombinations.filter(combo => {
     const totalCapacity = Object.entries(combo.combination).reduce(
-      (sum, [capacity, count]) => sum + (Number(capacity) * count), 
+      (sum, [capacity, count]) => sum + (Number(capacity) * count),
       0
     )
     return totalCapacity >= guests && Object.keys(combo.combination).length > 0
   })
-  
+
   if (validCombinations.length === 0) {
     return {}
   }
-  
-  const cheapest = validCombinations.reduce((min, combo) => 
+
+  const cheapest = validCombinations.reduce((min, combo) =>
     combo.totalCost < min.totalCost ? combo : min
   )
-  
+
   return cheapest.combination
 }
 
@@ -224,10 +224,10 @@ export default function HotelDetailsPage() {
   /* ---------------- AUTO-SELECT CHEAPEST ROOMS ---------------- */
   useEffect(() => {
     if (isInitialSelectionDone || categories.length === 0) return
-    
+
     // Ensure guests don't exceed max capacity
     const effectiveGuests = Math.min(guests, maxPossibleCapacity)
-    
+
     const cheapestSelection = smartSelectRooms(categories, effectiveGuests, availableRoomIds)
     setSelectedRoomCounts(cheapestSelection)
     setIsInitialSelectionDone(true)
@@ -253,7 +253,7 @@ export default function HotelDetailsPage() {
     return rooms
   }, [selectedRoomCounts, categories, availableRoomIds])
 
-  const totalCapacity = useMemo(() => 
+  const totalCapacity = useMemo(() =>
     selectedRoomDetails.reduce((sum, room) => sum + room.capacity, 0),
     [selectedRoomDetails]
   )
@@ -288,10 +288,10 @@ export default function HotelDetailsPage() {
   const handleAddRoom = (capacity) => {
     const category = categories.find(c => c.capacity === capacity)
     if (!category) return
-    
+
     const currentCount = selectedRoomCounts[capacity] || 0
     const maxAvailable = category.rooms.filter(r => availableRoomIds.has(r.id)).length
-    
+
     if (currentCount < maxAvailable) {
       setSelectedRoomCounts(prev => ({
         ...prev,
@@ -328,13 +328,13 @@ export default function HotelDetailsPage() {
   return (
     <div className="min-h-screen bg-white">
       <div className="container mx-auto px-6 md:px-12 lg:px-16 xl:px-24 py-6">
-      <Link
+        <Link
           href={`/search?location=${encodeURIComponent(searchParams.get('location'))}&check_in=${format(checkIn, "yyyy-MM-dd")}&check_out=${format(checkOut, "yyyy-MM-dd")}&guests=${guests}`}
           className="flex items-center text-gray-600 hover:text-gray-900 transition-colors"
-      >
+        >
           <ChevronLeft className="h-5 w-5" />
           <span className="ml-1 text-sm font-medium">Back to search page</span>
-      </Link>
+        </Link>
         <h1 className="text-2xl md:text-3xl font-bold mb-6">{hotel.name}</h1>
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">

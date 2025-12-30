@@ -24,8 +24,8 @@ export default function LandingHeader() {
             <div className="container mx-auto px-4 h-16 flex items-center justify-between">
                 {/* Logo */}
                 <Link href="/" className="flex flex-col items-start">
-                    <span className="text-xl sm:text-2xl font-bold text-gray-900">Vintza</span>
-                    <span className="text-xs text-gray-900">By Vintage Resorts</span>
+                    <span className="text-xl sm:text-2xl font-bold text-gold">Vintza</span>
+                    <span className="text-xs text-gold">By Vintage Resorts</span>
                     <div className="h-0.5 w-full bg-yellow-500 mt-0.5"></div>
                 </Link>
 
@@ -94,7 +94,7 @@ export default function LandingHeader() {
                 <div className="md:hidden border-t bg-white">
                     <div className="container mx-auto px-4 py-4 space-y-4">
                         <Link
-                            href="/search"
+                            href="/explore"
                             className="block py-3 border-b text-gray-700"
                             onClick={() => setMobileMenuOpen(false)}
                         >

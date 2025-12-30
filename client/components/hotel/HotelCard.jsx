@@ -8,7 +8,6 @@ export default function HotelCard({ id, name, location, rating, price, originalP
         <Card className="overflow-hidden flex flex-col md:flex-row h-full md:h-[280px] border rounded-none hover:shadow-lg transition-shadow">
             {/* Image Section */}
             <img src="https://images.oyoroomscdn.com/uploads/hotel_image/304846/large/xhteuluuvlny.jpg">
-            
             </img>
             <div className="relative w-full md:w-[35%] h-48 md:h-full bg-gray-200 shrink-0">
                 <div className="absolute top-2 left-2 bg-white/90 px-2 py-1 text-[10px] font-bold uppercase tracking-wider text-gray-700 rounded-sm z-10">

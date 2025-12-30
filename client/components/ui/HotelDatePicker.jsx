@@ -4,7 +4,7 @@ import { useState, useEffect, useRef } from "react"
 import { ChevronLeft, ChevronRight, X } from "lucide-react"
 import { format, addMonths, subMonths, startOfMonth, endOfMonth, eachDayOfInterval, isSameMonth, isSameDay, isAfter, isBefore, startOfDay } from "date-fns"
 
-export default function DatePicker({ checkIn, checkOut, onDateChange, onClose, insidePanel = false }) {
+export default function HotelDatePicker({ checkIn, checkOut, onDateChange, onClose, insidePanel = false }) {
     const [currentMonth, setCurrentMonth] = useState(checkIn || new Date())
     const [selectedCheckIn, setSelectedCheckIn] = useState(checkIn)
     const [selectedCheckOut, setSelectedCheckOut] = useState(checkOut)
@@ -14,7 +14,7 @@ export default function DatePicker({ checkIn, checkOut, onDateChange, onClose, i
     const today = startOfDay(new Date())
 
     useEffect(() => {
-        if (insidePanel) return // Skip outside click when inside panel
+        if (insidePanel) return
 
         const handleClickOutside = (event) => {
             if (calendarRef.current && !calendarRef.current.contains(event.target)) {
@@ -25,38 +25,36 @@ export default function DatePicker({ checkIn, checkOut, onDateChange, onClose, i
         return () => document.removeEventListener("mousedown", handleClickOutside)
     }, [onClose, insidePanel])
 
-    // Position calendar to prevent overflow
+    // Specific positioning for Hotel Page - Always opens UP
     useEffect(() => {
         if (!calendarRef.current || insidePanel) return
 
         const calendar = calendarRef.current
 
-        // On mobile, use fixed positioning
+        // On mobile, use fixed positioning (bottom sheet style)
         if (window.innerWidth < 640) {
-            return // Fixed positioning handles it
+            // For now, let's keep the bottom sheet behavior for mobile as it's the best mobile UX
+            // unless explicitly overridden. It covers the keyboard/screen area nicely.
+            return
         }
 
-        const rect = calendar.getBoundingClientRect()
-        const viewportWidth = window.innerWidth
-
-        // Reset styles first - always appear below for desktop
+        // Desktop/Tablet: Force open UPWARDS
         calendar.style.left = 'auto'
         calendar.style.right = '0'
-        calendar.style.top = '100%'
-        calendar.style.bottom = 'auto'
-        calendar.style.marginTop = '2rem'
-        calendar.style.marginBottom = '0'
+        calendar.style.top = 'auto'      // Unset top
+        calendar.style.bottom = '100%'   // Align to bottom of container (opens up)
+        calendar.style.marginTop = '0'
+        calendar.style.marginBottom = '1rem' // Add some spacing
 
-        // Get updated rect after reset
-        const updatedRect = calendar.getBoundingClientRect()
+        const viewportWidth = window.innerWidth
+        const rect = calendar.getBoundingClientRect()
 
-        // Check if calendar goes off right edge
-        if (updatedRect.right > viewportWidth - 20) {
+        // Prevent going off right edge
+        if (rect.right > viewportWidth - 20) {
             calendar.style.left = 'auto'
             calendar.style.right = '0'
         }
 
-        // NO FLIP LOGIC HERE - strictly stay below
     }, [insidePanel, isSelectingCheckOut])
 
     const monthStart = startOfMonth(currentMonth)
@@ -80,23 +78,19 @@ export default function DatePicker({ checkIn, checkOut, onDateChange, onClose, i
         const normalizedDate = startOfDay(date)
 
         if (isBefore(normalizedDate, today)) {
-            return // Don't allow selecting past dates
+            return
         }
 
         if (!isSelectingCheckOut) {
-            // Selecting check-in date
             setSelectedCheckIn(normalizedDate)
             setSelectedCheckOut(null)
             setIsSelectingCheckOut(true)
         } else {
-            // Selecting check-out date
             if (isBefore(normalizedDate, selectedCheckIn) || isSameDay(normalizedDate, selectedCheckIn)) {
-                // If selected date is before or same as check-in, reset and start over
                 setSelectedCheckIn(normalizedDate)
                 setSelectedCheckOut(null)
             } else {
                 setSelectedCheckOut(normalizedDate)
-                // Call the callback with both dates
                 onDateChange(selectedCheckIn, normalizedDate)
                 setIsSelectingCheckOut(false)
             }
@@ -162,16 +156,14 @@ export default function DatePicker({ checkIn, checkOut, onDateChange, onClose, i
             ref={calendarRef}
             className={insidePanel
                 ? "bg-white rounded-lg p-6"
-                : "fixed sm:absolute bottom-0 sm:bottom-auto sm:top-full left-0 right-0 sm:left-auto sm:right-0 mb-0 sm:mb-0 sm:mt-8 bg-white rounded-t-2xl sm:rounded-lg shadow-2xl p-4 sm:p-6 z-[9999] border border-gray-200 w-full sm:w-auto sm:min-w-[620px] max-h-[85vh] sm:max-h-[calc(100vh-6rem)] overflow-y-auto"
+                : "fixed sm:absolute bottom-0 sm:bottom-100% sm:top-auto left-0 right-0 sm:left-auto sm:right-0 mb-0 sm:mb-4 bg-white rounded-t-2xl sm:rounded-lg shadow-2xl p-4 sm:p-6 z-[99999] border border-gray-200 w-full sm:w-auto sm:min-w-[620px] max-h-[85vh] sm:max-h-[calc(100vh-6rem)] overflow-y-auto"
             }
         >
-            {/* Header with close button */}
             <div className="flex items-center justify-between mb-6">
                 <button
                     type="button"
                     onClick={handlePrevMonth}
                     className="p-2 hover:bg-gray-100 rounded-full transition-colors"
-                    aria-label="Previous month"
                 >
                     <ChevronLeft className="h-5 w-5" />
                 </button>
@@ -187,7 +179,6 @@ export default function DatePicker({ checkIn, checkOut, onDateChange, onClose, i
                         type="button"
                         onClick={handleNextMonth}
                         className="p-2 hover:bg-gray-100 rounded-full transition-colors"
-                        aria-label="Next month"
                     >
                         <ChevronRight className="h-5 w-5" />
                     </button>
@@ -196,7 +187,6 @@ export default function DatePicker({ checkIn, checkOut, onDateChange, onClose, i
                             type="button"
                             onClick={onClose}
                             className="p-2 hover:bg-gray-100 rounded-full transition-colors"
-                            aria-label="Close calendar"
                         >
                             <X className="h-5 w-5" />
                         </button>
@@ -204,7 +194,6 @@ export default function DatePicker({ checkIn, checkOut, onDateChange, onClose, i
                 </div>
             </div>
 
-            {/* Calendars */}
             <div className="flex flex-col sm:flex-row gap-4 sm:gap-6 overflow-x-auto">
                 {renderCalendar(currentMonth, daysInMonth, monthStart)}
                 <div className="hidden sm:block">
@@ -212,7 +201,6 @@ export default function DatePicker({ checkIn, checkOut, onDateChange, onClose, i
                 </div>
             </div>
 
-            {/* Selected dates display */}
             {selectedCheckIn && !selectedCheckOut && (
                 <div className="mt-4 text-sm text-gray-600 text-center font-medium">
                     Check-in: <span className="font-bold text-[#1ab64f]">{format(selectedCheckIn, "EEE, dd MMM")}</span>

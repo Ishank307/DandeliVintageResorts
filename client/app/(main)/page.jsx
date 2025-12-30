@@ -1,5 +1,6 @@
 "use client"
 
+import Link from "next/link"
 import SearchBar from "@/components/search/SearchBar"
 import HotelCard from "@/components/hotel/HotelCard"
 import { Button } from "@/components/ui/Button"
@@ -14,9 +15,9 @@ export default function HomePage() {
       <section className="relative bg-slate-50 text-slate-900 pt-8 md:pt-16 pb-12 md:pb-24">
         <div className="container mx-auto px-4 text-center">
           <h1 className="text-2xl sm:text-3xl md:text-4xl font-extrabold mb-6 md:mb-8 text-slate-900 px-2">
-            Discover Your Perfect Getaway - Luxury Resorts Worldwide
+            Discover Your Perfect Getaway – Curated Luxury Escapes
           </h1>
-          <div className="w-full max-w-6xl mx-auto">
+          <div className="w-full max-w-7xl mx-auto">
             <SearchBar />
           </div>
         </div>
@@ -47,29 +48,7 @@ export default function HomePage() {
         </div>
       </section>
 
-      {/* Peaceful Getaway Section */}
-      <section className="py-12 md:py-16 bg-white">
-        <div className="container mx-auto px-4 text-center md:text-left">
-          <h2 className="text-4xl sm:text-5xl md:text-6xl font-bold text-gray-900 mb-4">
-            Your peaceful getaway is here
-          </h2>
-          <div className="flex flex-col md:flex-row items-center md:items-start gap-6 md:gap-8">
-            <p className="text-lg sm:text-xl text-gray-500 md:max-w-md">
-              discover something anything<br />anywher im ready
-            </p>
-            <Button className="bg-gray-900 hover:bg-gray-800 text-white px-8 py-4 text-lg font-medium rounded-md flex items-center gap-2">
-              Explore →
-            </Button>
-          </div>
-        </div>
-      </section>
 
-
-
-      {/* Map/Location Section (Placeholder) */}
-      <section className="py-8 container mx-auto px-4">
-        <div className="bg-gray-100 h-10 rounded"></div>
-      </section>
 
       {/* Vacation Planner Section */}
       <VacationPlanner />
