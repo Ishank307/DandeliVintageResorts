@@ -1,3 +1,5 @@
+"use client"
+
 import { getExploreRooms } from "@/lib/api"
 import ExploreSection from "../../../components/ExploreSecton"
 
@@ -5,7 +7,7 @@ export default async function ExplorePage() {
     const rooms = await getExploreRooms()
 
     const popular = rooms.slice(0, 8)
-   
+
     const topRated = rooms.slice(4, 12)
 
     return (
@@ -15,7 +17,7 @@ export default async function ExplorePage() {
                 rooms={popular}
             />
 
-         
+
 
             <ExploreSection
                 title="Top rated stays"
