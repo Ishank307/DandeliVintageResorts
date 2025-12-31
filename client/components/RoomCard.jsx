@@ -6,7 +6,9 @@ import { useRouter, useSearchParams } from "next/navigation"
 import { useState } from "react"
 import { parseISO, addDays } from "date-fns"
 export default function RoomCard({ room, context = "search" }) {
-  const MEDIA_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000"
+  // Handle case where NEXT_PUBLIC_API_URL includes /api
+  const apiBase = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000/api";
+  const MEDIA_BASE_URL = apiBase.endsWith('/api') ? apiBase.slice(0, -4) : apiBase;
   const imageUrl = room.images?.[0]?.image
     ? `${MEDIA_BASE_URL}${room.images[0].image}`
     : "/placeholder-room.jpg"
