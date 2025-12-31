@@ -2,7 +2,7 @@
 
 import Link from "next/link"
 import { Phone, User, LogOut, Calendar } from "lucide-react"
-import { useState } from "react"
+import { useState, Suspense } from "react"
 import { useAuth } from "@/context/AuthContext"
 import { useRouter } from "next/navigation"
 import SearchBar from "@/components/search/SearchBar"
@@ -32,7 +32,9 @@ export default function SearchHeader() {
 
                     {/* Search Bar - Same as Landing Page */}
                     <div className="flex-1 max-w-4xl mx-8 hidden lg:block">
-                        <SearchBar />
+                        <Suspense fallback={<div>Loading...</div>}>
+                            <SearchBar />
+                        </Suspense>
                     </div>
 
                     {/* Right Side Actions */}

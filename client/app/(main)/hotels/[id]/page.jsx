@@ -1,5 +1,6 @@
 "use client"
 
+import { Suspense } from "react"
 import { useEffect, useMemo, useState } from "react"
 import { useParams, useSearchParams, useRouter } from "next/navigation"
 import { format, addDays } from "date-fns"
@@ -104,7 +105,7 @@ function smartSelectRooms(categories, guests, availableRoomIds) {
   return cheapest.combination
 }
 
-export default function HotelDetailsPage() {
+function HotelDetailsContent() {
   const { id } = useParams()
   const searchParams = useSearchParams()
   const router = useRouter()
@@ -393,5 +394,13 @@ export default function HotelDetailsPage() {
         </div>
       </div>
     </div>
+  )
+}
+
+export default function HotelDetailsPage() {
+  return (
+    <Suspense fallback={<div>Loading hotel details...</div>}>
+      <HotelDetailsContent />
+    </Suspense>
   )
 }

@@ -1,11 +1,12 @@
 "use client"
 
+import { Suspense } from "react"
 import { useEffect, useState } from "react"
 import { useSearchParams } from "next/navigation"
 import { searchRooms } from "@/lib/api"
 import RoomCard from "@/components/RoomCard"
 
-export default function SearchPage() {
+function SearchContent() {
   const searchParams = useSearchParams()
 
   const location = searchParams.get("location") || "Dandeli"
@@ -17,7 +18,7 @@ export default function SearchPage() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
   const [filtersOpen, setFiltersOpen] = useState(false)
-  
+
   // Price filter state
   const [priceRange, setPriceRange] = useState([0, 10000])
   const [minPrice, setMinPrice] = useState(0)
@@ -39,16 +40,16 @@ export default function SearchPage() {
           const validResorts = data.filter(resort => {
             const availableRooms = resort.available_rooms || []
             const totalCapacity = availableRooms.reduce(
-              (sum, room) => sum + (room.capacity || 0), 
+              (sum, room) => sum + (room.capacity || 0),
               0
             )
             return totalCapacity >= guests
           })
-          
+
           setResults(validResorts)
-          
+
           if (validResorts.length > 0) {
-            const prices = validResorts.flatMap(resort => 
+            const prices = validResorts.flatMap(resort =>
               resort.available_rooms.map(room => room.price_per_night)
             )
             const min = Math.min(...prices)
@@ -57,7 +58,7 @@ export default function SearchPage() {
             setMaxPrice(Math.ceil(max / 500) * 500)
             setPriceRange([Math.floor(min / 500) * 500, Math.ceil(max / 500) * 500])
           }
-          
+
           if (validResorts.length === 0) {
             setError(`No resorts found with capacity for ${guests} guests in ${location}`)
           }
@@ -85,7 +86,7 @@ export default function SearchPage() {
       const availableRooms = resort.available_rooms || []
       const cheapestRoom = availableRooms[0] || null
       const totalCapacity = availableRooms.reduce(
-        (sum, room) => sum + (room.capacity || 0), 
+        (sum, room) => sum + (room.capacity || 0),
         0
       )
 
@@ -103,21 +104,21 @@ export default function SearchPage() {
         },
       }
     })
-    .filter(room => 
-      room.price_per_night >= priceRange[0] && 
+    .filter(room =>
+      room.price_per_night >= priceRange[0] &&
       room.price_per_night <= priceRange[1]
     )
 
   const handlePriceChange = (index, value) => {
     const newRange = [...priceRange]
     newRange[index] = Number(value)
-    
+
     if (index === 0 && newRange[0] > newRange[1]) {
       newRange[0] = newRange[1]
     } else if (index === 1 && newRange[1] < newRange[0]) {
       newRange[1] = newRange[0]
     }
-    
+
     setPriceRange(newRange)
   }
 
@@ -167,7 +168,7 @@ export default function SearchPage() {
   return (
     <main className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50">
       <div className="container mx-auto px-4 py-6 lg:py-8">
-        
+
         {/* Header with Search Summary */}
         <div className="mb-6">
           <div className="bg-white rounded-2xl  border border-gray-100 p-6">
@@ -197,7 +198,7 @@ export default function SearchPage() {
                   </div>
                 </div>
               </div>
-              
+
               {/* Mobile Filter Toggle */}
               <button
                 onClick={() => setFiltersOpen(!filtersOpen)}
@@ -229,7 +230,7 @@ export default function SearchPage() {
                     Filters
                   </h3>
                   {hasActiveFilters && (
-                    <button 
+                    <button
                       onClick={resetPriceFilter}
                       className="text-sm text-blue-600 hover:text-blue-700 font-semibold transition-colors"
                     >
@@ -237,7 +238,7 @@ export default function SearchPage() {
                     </button>
                   )}
                 </div>
-                
+
                 {/* Price Range Filter */}
                 <div className="space-y-5">
                   <div>
@@ -247,7 +248,7 @@ export default function SearchPage() {
                       </svg>
                       Price per night
                     </label>
-                    
+
                     {/* Price Range Display */}
                     <div className="bg-gradient-to-r from-blue-50 to-purple-50 rounded-xl p-4 mb-5">
                       <div className="flex items-center justify-between">
@@ -269,7 +270,7 @@ export default function SearchPage() {
 
                     {/* Dual Range Slider */}
                     <div className="relative h-2 bg-gray-200 rounded-full mb-8">
-                      <div 
+                      <div
                         className="absolute h-2 bg-gradient-to-r from-blue-600 to-purple-600 rounded-full transition-all duration-200"
                         style={{
                           left: `${((priceRange[0] - minPrice) / (maxPrice - minPrice)) * 100}%`,
@@ -364,7 +365,7 @@ export default function SearchPage() {
                 <p className="text-gray-600 mb-6">
                   Try adjusting your price range to see more options
                 </p>
-                <button 
+                <button
                   onClick={resetPriceFilter}
                   className="inline-flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded-xl font-semibold hover:from-blue-700 hover:to-purple-700 transition-all shadow-lg hover:shadow-xl"
                 >
@@ -390,5 +391,13 @@ export default function SearchPage() {
         </div>
       </div>
     </main>
+  )
+}
+
+export default function SearchPage() {
+  return (
+    <Suspense fallback={<div>Loading search results...</div>}>
+      <SearchContent />
+    </Suspense>
   )
 }

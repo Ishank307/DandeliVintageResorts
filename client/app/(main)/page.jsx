@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/Button"
 import Reviews from "@/components/Reviews"
 import VacationPlanner from "@/components/VacationPlanner"
 import Image from "next/image"
+import { Suspense } from "react"
 
 export default function HomePage() {
   return (
@@ -18,7 +19,9 @@ export default function HomePage() {
             Discover Your Perfect Getaway – Curated Luxury Escapes
           </h1>
           <div className="w-full max-w-7xl mx-auto">
-            <SearchBar />
+            <Suspense fallback={<div>Loading...</div>}>
+              <SearchBar />
+            </Suspense>
           </div>
         </div>
       </section>

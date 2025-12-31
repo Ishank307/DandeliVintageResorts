@@ -17,9 +17,10 @@ from django.conf import settings
 from django.views.decorators.csrf import csrf_exempt
 import json
 from django.core.mail import send_mail
-from bookings.tasks import send_invoice_email_enqueue
+from bookings.tasks import send_invoice_email_enqueue, push_booking_to_sheet_task
 import logging
 import traceback
+
 logger = logging.getLogger(__name__)
 
 # Request OTP
@@ -685,3 +686,10 @@ def check_coupon(request):
         return Response({"valid": True, "discount": coupon.discount_percentage})
     except Coupon.DoesNotExist:
         return Response({"valid": False})
+    
+    
+    
+    
+def test(request):
+    push_booking_to_sheet_task(["1", "John Doe", "Computer Science", "Senior", "3.8"])
+    return Response({"message": "API is working!"}, status=status.HTTP_200_OK)

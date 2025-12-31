@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, Suspense } from "react"
 import Link from "next/link"
 import Image from "next/image"
 import { ChevronLeft, Lock, Phone, Calendar, User, Tag } from "lucide-react"
@@ -11,40 +11,41 @@ import toast from "react-hot-toast"
 
 import { useRouter } from "next/navigation"
 
-import { 
+import {
     getHotelDetails,
-    getImageUrl, 
-    addGuestDetails, 
-    selectRooms, 
-    formatDateForAPI, 
-    createRazorpayOrder, 
-    verifyPayment , 
-    validateCoupon} from "@/lib/api";
+    getImageUrl,
+    addGuestDetails,
+    selectRooms,
+    formatDateForAPI,
+    createRazorpayOrder,
+    verifyPayment,
+    validateCoupon
+} from "@/lib/api";
 import { loadRazorpay } from "@/utils/loadRazorpay"
 import { useAuth } from "@/context/AuthContext"
 
 
-export default function BookingPage() {
+function BookingContent() {
     const [currentStep, setCurrentStep] = useState(1)
     const [paymentMethod, setPaymentMethod] = useState("property")
     const [couponCode, setCouponCode] = useState("")
     const [appliedCoupon, setAppliedCoupon] = useState(null)
     const [showCouponInput, setShowCouponInput] = useState(false)
-    const {id} = useParams();
+    const { id } = useParams();
     const searchParams = useSearchParams()
     const [bookingAttemptId, setBookingAttemptId] = useState(null)
-const [isValidatingCoupon, setIsValidatingCoupon] = useState(false)
+    const [isValidatingCoupon, setIsValidatingCoupon] = useState(false)
 
     const [isPaying, setIsPaying] = useState(false)
 
     const checkInDate = searchParams.get("checkIn")
     const checkOutDate = searchParams.get("checkOut")
     const guests = Number(searchParams.get("guests"))
-  const { user } = useAuth()  // Add this line to get the user
+    const { user } = useAuth()  // Add this line to get the user
 
     // 🔑 UPDATED: Parse multiple room IDs from comma-separated string
     const roomIdsParam = searchParams.get("room_ids")
-    const roomIds = roomIdsParam 
+    const roomIds = roomIdsParam
         ? roomIdsParam.split(',').map(id => Number(id)).filter(id => !isNaN(id))
         : []
 
@@ -67,77 +68,77 @@ const [isValidatingCoupon, setIsValidatingCoupon] = useState(false)
     const [payNowType, setPayNowType] = useState("full")
     const [bookingData, setBookingData] = useState(null);
 
-useEffect(() => {
-    const saved = localStorage.getItem("bookingAttemptId")
-    if (saved) setBookingAttemptId(saved)
-}, [])
+    useEffect(() => {
+        const saved = localStorage.getItem("bookingAttemptId")
+        if (saved) setBookingAttemptId(saved)
+    }, [])
 
-// 🔑 UPDATED: Handle multiple rooms
-useEffect(() => {
-    if (!id || !checkInDate || !checkOutDate || roomIds.length === 0) return
+    // 🔑 UPDATED: Handle multiple rooms
+    useEffect(() => {
+        if (!id || !checkInDate || !checkOutDate || roomIds.length === 0) return
 
-    async function init() {
-        const hotel = await getHotelDetails(id)
-        console.log(hotel)
-        // 🔑 Find all selected rooms
-        const selectedRooms = hotel.rooms.filter(
-            room => roomIds.includes(room.id)
-        )
+        async function init() {
+            const hotel = await getHotelDetails(id)
+            console.log(hotel)
+            // 🔑 Find all selected rooms
+            const selectedRooms = hotel.rooms.filter(
+                room => roomIds.includes(room.id)
+            )
 
-        if (selectedRooms.length === 0) {
-            alert("Selected rooms are no longer available.")
-            router.push(`/hotels/${id}`)
-            return
+            if (selectedRooms.length === 0) {
+                alert("Selected rooms are no longer available.")
+                router.push(`/hotels/${id}`)
+                return
+            }
+
+            // 🔑 Verify we got all requested rooms
+            if (selectedRooms.length !== roomIds.length) {
+                alert("Some selected rooms are no longer available.")
+                router.push(`/hotels/${id}`)
+                return
+            }
+
+            const nights =
+                (new Date(checkOutDate) - new Date(checkInDate)) /
+                (1000 * 60 * 60 * 24)
+
+            // 🔑 Calculate total room charge from all selected rooms
+            const totalRoomCharge = selectedRooms.reduce(
+                (sum, room) => sum + (Number(room.price_per_night) * nights),
+                0
+            )
+
+            // 🔑 Get first room's image for display (or you could show all)
+            const primaryRoomImage = getImageUrl(selectedRooms[0].images[0]?.image)
+
+            // 🔑 Create room type description
+            const roomTypeDescription = selectedRooms.length === 1
+                ? `Room ${selectedRooms[0].room_number}`
+                : `${selectedRooms.length} Rooms (${selectedRooms.map(r => r.room_number).join(', ')})`
+
+            setBookingData({
+                hotel: {
+                    name: hotel.name,
+                    rating: 4.5,
+                    reviews: 188,
+                    image: primaryRoomImage,
+                    phone_number: hotel.contact_number,
+                },
+                booking: {
+                    checkIn: new Date(checkInDate).toDateString(),
+                    nights,
+                    roomType: roomTypeDescription,
+                    guests,
+                    selectedRooms, // 🔑 Store all room details
+                },
+                pricing: {
+                    roomCharge: totalRoomCharge,
+                    instantDiscount: 0,
+                    wizardDiscount: 0,
+                    couponDiscount: appliedCoupon ? (totalRoomCharge * appliedCoupon.discount_percentage) / 100 : 0,
+                },
+            })
         }
-
-        // 🔑 Verify we got all requested rooms
-        if (selectedRooms.length !== roomIds.length) {
-            alert("Some selected rooms are no longer available.")
-            router.push(`/hotels/${id}`)
-            return
-        }
-
-        const nights =
-            (new Date(checkOutDate) - new Date(checkInDate)) /
-            (1000 * 60 * 60 * 24)
-
-        // 🔑 Calculate total room charge from all selected rooms
-        const totalRoomCharge = selectedRooms.reduce(
-            (sum, room) => sum + (Number(room.price_per_night) * nights),
-            0
-        )
-
-        // 🔑 Get first room's image for display (or you could show all)
-        const primaryRoomImage = getImageUrl(selectedRooms[0].images[0]?.image)
-
-        // 🔑 Create room type description
-        const roomTypeDescription = selectedRooms.length === 1
-            ? `Room ${selectedRooms[0].room_number}`
-            : `${selectedRooms.length} Rooms (${selectedRooms.map(r => r.room_number).join(', ')})`
-
-        setBookingData({
-            hotel: {
-                name: hotel.name,
-                rating: 4.5,
-                reviews: 188,
-                image: primaryRoomImage,
-                phone_number : hotel.contact_number,
-            },
-            booking: {
-                checkIn: new Date(checkInDate).toDateString(),
-                nights,
-                roomType: roomTypeDescription,
-                guests,
-                selectedRooms, // 🔑 Store all room details
-            },
-            pricing: {
-                roomCharge: totalRoomCharge,
-                instantDiscount: 0,
-                wizardDiscount: 0,
-                couponDiscount: appliedCoupon ?( totalRoomCharge * appliedCoupon.discount_percentage )/100: 0,
-            },
-        })
-    }
 
         init()
     }, [
@@ -167,156 +168,156 @@ useEffect(() => {
 
     const payNowAmount =
         payNowType === "partial"
-            ? Math.round((totalAmount * PARTIAL_PERCENTAGE)/ 100)
+            ? Math.round((totalAmount * PARTIAL_PERCENTAGE) / 100)
             : totalAmount
 
     const remainingAmount = totalAmount - payNowAmount
 
 
-const handleApplyCoupon = async () => {
-    if (!couponCode.trim()) {
-        toast.error('Please enter a coupon code')
-        return
-    }
+    const handleApplyCoupon = async () => {
+        if (!couponCode.trim()) {
+            toast.error('Please enter a coupon code')
+            return
+        }
 
-    setIsValidatingCoupon(true)
+        setIsValidatingCoupon(true)
 
-    try {
-        
+        try {
 
-        const data = await validateCoupon(couponCode)
-        console.log(data)
-        
+
+            const data = await validateCoupon(couponCode)
+            console.log(data)
+
             setAppliedCoupon({
                 code: couponCode.toUpperCase(),
                 discount_percentage: data.discount_percentage
             })
             setShowCouponInput(false)
             toast.success(`Coupon applied! ${data.discount_percentage}% discount`)
-        
-    } catch (error) {
-        console.error('Coupon validation error:', error)
-        toast.error('Failed to validate coupon. Please try again.')
-    } finally {
-        setIsValidatingCoupon(false)
-    }
-}
-const handleRemoveCoupon = () => {
-    setAppliedCoupon(null)
-    setCouponCode("")
-}
 
-const handleGuestDetailsChange = (e) => {
-    setGuestDetails({
-        ...guestDetails,
-        [e.target.name]: e.target.value
-    })
-    setErrors({
-        ...errors,
-        [e.target.name]: ""
-    })
-}
-
-const validateGuestDetails = () => {
-    const newErrors = {}
-
-    if (!guestDetails.name.trim()) {
-        newErrors.name = "Name is required"
-    }
-
-    if (!guestDetails.email.trim()) {
-        newErrors.email = "Email is required"
-    } else if (!/\S+@\S+\.\S+/.test(guestDetails.email)) {
-        newErrors.email = "Email is invalid"
-    }
-
-    if (!guestDetails.phone.trim()) {
-        newErrors.phone = "Phone is required"
-    } else if (!/^\d{10}$/.test(guestDetails.phone)) {
-        newErrors.phone = "Phone must be 10 digits"
-    }
-
-    setErrors(newErrors)
-    return Object.keys(newErrors).length === 0
-}
-
-
-
-// 🔑 UPDATED: Handle multiple rooms
-const handleAddGuests = async () => {
-    if (!validateGuestDetails()) {
-        return;
-    }
-
-    const hotel = await getHotelDetails(id);
-
-    if (!hotel?.rooms?.length) {
-        alert("Room data not loaded yet. Please wait.");
-        return;
-    }
-
-    // 🔑 Verify all selected rooms exist
-    const selectedRooms = hotel.rooms.filter(
-        room => roomIds.includes(room.id)
-    )
-
-    if (selectedRooms.length === 0) {
-        alert("Selected rooms not found.")
-        return
-    }
-
-    if (selectedRooms.length !== roomIds.length) {
-        alert("Some selected rooms are no longer available.")
-        return
-    }
-
-    // 🔑 Select multiple rooms
-    const res = await selectRooms({
-        resort_id: id,
-        room_ids: roomIds, // 🔑 Pass array of all room IDs
-        check_in_date: formatDateForAPI(checkInDate),
-        check_out_date: formatDateForAPI(checkOutDate),
-        guests,
-    });
-
-    const attemptId = res.booking_attempt_id;
-    setBookingAttemptId(attemptId);
-    localStorage.setItem("bookingAttemptId", attemptId);
-
-    if (!attemptId) {
-        alert("Booking session expired. Please start again.");
-        return;
-    }
-
-    // 🔑 UPDATED: Create guest details for each room
-    // Distribute guests across rooms (you may want to adjust this logic)
-    const guestsPerRoom = Math.ceil(guests / selectedRooms.length)
-    
-    const guestDetailsList = []
-    let remainingGuests = guests
-
-    selectedRooms.forEach((room, index) => {
-        const guestsForThisRoom = Math.min(guestsPerRoom, remainingGuests, room.capacity)
-        
-        for (let i = 0; i < guestsForThisRoom; i++) {
-            guestDetailsList.push({
-                room_id: room.id,
-                name: guestDetails.name,
-                age: 25,
-            })
+        } catch (error) {
+            console.error('Coupon validation error:', error)
+            toast.error('Failed to validate coupon. Please try again.')
+        } finally {
+            setIsValidatingCoupon(false)
         }
-        
-        remainingGuests -= guestsForThisRoom
-    })
+    }
+    const handleRemoveCoupon = () => {
+        setAppliedCoupon(null)
+        setCouponCode("")
+    }
 
-    await addGuestDetails({
-        booking_attempt_id: attemptId,
-        guests: guestDetailsList,
-    });
+    const handleGuestDetailsChange = (e) => {
+        setGuestDetails({
+            ...guestDetails,
+            [e.target.name]: e.target.value
+        })
+        setErrors({
+            ...errors,
+            [e.target.name]: ""
+        })
+    }
 
-    setCurrentStep(2);
-};
-const handlePayNow = async (paymentType = "full") => {
+    const validateGuestDetails = () => {
+        const newErrors = {}
+
+        if (!guestDetails.name.trim()) {
+            newErrors.name = "Name is required"
+        }
+
+        if (!guestDetails.email.trim()) {
+            newErrors.email = "Email is required"
+        } else if (!/\S+@\S+\.\S+/.test(guestDetails.email)) {
+            newErrors.email = "Email is invalid"
+        }
+
+        if (!guestDetails.phone.trim()) {
+            newErrors.phone = "Phone is required"
+        } else if (!/^\d{10}$/.test(guestDetails.phone)) {
+            newErrors.phone = "Phone must be 10 digits"
+        }
+
+        setErrors(newErrors)
+        return Object.keys(newErrors).length === 0
+    }
+
+
+
+    // 🔑 UPDATED: Handle multiple rooms
+    const handleAddGuests = async () => {
+        if (!validateGuestDetails()) {
+            return;
+        }
+
+        const hotel = await getHotelDetails(id);
+
+        if (!hotel?.rooms?.length) {
+            alert("Room data not loaded yet. Please wait.");
+            return;
+        }
+
+        // 🔑 Verify all selected rooms exist
+        const selectedRooms = hotel.rooms.filter(
+            room => roomIds.includes(room.id)
+        )
+
+        if (selectedRooms.length === 0) {
+            alert("Selected rooms not found.")
+            return
+        }
+
+        if (selectedRooms.length !== roomIds.length) {
+            alert("Some selected rooms are no longer available.")
+            return
+        }
+
+        // 🔑 Select multiple rooms
+        const res = await selectRooms({
+            resort_id: id,
+            room_ids: roomIds, // 🔑 Pass array of all room IDs
+            check_in_date: formatDateForAPI(checkInDate),
+            check_out_date: formatDateForAPI(checkOutDate),
+            guests,
+        });
+
+        const attemptId = res.booking_attempt_id;
+        setBookingAttemptId(attemptId);
+        localStorage.setItem("bookingAttemptId", attemptId);
+
+        if (!attemptId) {
+            alert("Booking session expired. Please start again.");
+            return;
+        }
+
+        // 🔑 UPDATED: Create guest details for each room
+        // Distribute guests across rooms (you may want to adjust this logic)
+        const guestsPerRoom = Math.ceil(guests / selectedRooms.length)
+
+        const guestDetailsList = []
+        let remainingGuests = guests
+
+        selectedRooms.forEach((room, index) => {
+            const guestsForThisRoom = Math.min(guestsPerRoom, remainingGuests, room.capacity)
+
+            for (let i = 0; i < guestsForThisRoom; i++) {
+                guestDetailsList.push({
+                    room_id: room.id,
+                    name: guestDetails.name,
+                    age: 25,
+                })
+            }
+
+            remainingGuests -= guestsForThisRoom
+        })
+
+        await addGuestDetails({
+            booking_attempt_id: attemptId,
+            guests: guestDetailsList,
+        });
+
+        setCurrentStep(2);
+    };
+    const handlePayNow = async (paymentType = "full") => {
         // Validate booking data
         if (!bookingAttemptId) {
             toast.error("Booking session expired. Please start over.")
@@ -339,11 +340,11 @@ const handlePayNow = async (paymentType = "full") => {
 
             // 2️⃣ Create Razorpay order
             toast.loading("Creating order...", { id: 'create-order' })
-            
+
             const orderData = await createRazorpayOrder({
                 booking_attempt_id: bookingAttemptId,
                 payment_type: paymentType,
-                coupon_code: appliedCoupon?.code || null, 
+                coupon_code: appliedCoupon?.code || null,
             })
 
             toast.success("Order created", { id: 'create-order' })
@@ -373,10 +374,10 @@ const handlePayNow = async (paymentType = "full") => {
 
                 handler: async function (response) {
                     console.log("Payment successful:", response)
-                    
+
                     // Show verifying state
                     toast.loading("Verifying payment...", { id: 'verify-payment' })
-                    
+
                     try {
                         const verifyRes = await verifyPayment({
                             razorpay_order_id: response.razorpay_order_id,
@@ -388,10 +389,10 @@ const handlePayNow = async (paymentType = "full") => {
 
                         if (verifyRes.success) {
                             toast.success("Payment verified! Redirecting...", { id: 'verify-payment' })
-                            
+
                             // Clean up
                             localStorage.removeItem("bookingAttemptId")
-                            
+
                             // Redirect to booking details
                             setTimeout(() => {
                                 router.push(`/bookings/${verifyRes.booking_id}`)
@@ -406,7 +407,7 @@ const handlePayNow = async (paymentType = "full") => {
                 },
 
                 modal: {
-                    ondismiss: function() {
+                    ondismiss: function () {
                         console.log("Payment cancelled by user")
                         toast.error("Payment cancelled")
                         setIsPaying(false)
@@ -427,31 +428,31 @@ const handlePayNow = async (paymentType = "full") => {
             console.log("Opening Razorpay checkout")
             const rzp = new window.Razorpay(options)
 
-            rzp.on("payment.failed", function(response) {
+            rzp.on("payment.failed", function (response) {
                 console.error("Payment failed:", response.error)
-                
+
                 const errorMessage = response.error.description || "Payment failed"
                 toast.error(errorMessage)
-                
+
                 // Navigate back with error info
                 setTimeout(() => {
                     router.push(`/hotels/${hotelId}?payment_failed=true`)
                 }, 2000)
-                
+
                 setIsPaying(false)
             })
 
             rzp.open()
-            
+
         } catch (error) {
             console.error("Payment error:", error)
             toast.error(error.message || "Failed to initiate payment")
-            
+
             // Navigate back to hotel page
             setTimeout(() => {
                 router.push(`/hotels/${hotelId}?error=payment_failed`)
             }, 2000)
-            
+
             setIsPaying(false)
         }
     }
@@ -463,32 +464,32 @@ const handlePayNow = async (paymentType = "full") => {
         const errorType = errorData.error
         const resortId = bookingData?.hotel?.id || hotelId
 
-        switch(errorType) {
+        switch (errorType) {
             case 'SIGNATURE_INVALID':
                 toast.error(
                     "Payment verification failed. If amount was deducted, contact support.",
                     { duration: 6000 }
                 )
                 break
-                
+
             case 'PAYMENT_NOT_FOUND':
                 toast.error(
                     "Payment record not found. Please contact support.",
                     { duration: 5000 }
                 )
                 break
-                
+
             case 'UNAUTHORIZED':
                 toast.error("This payment does not belong to your account")
                 break
-                
+
             case 'SERVER_ERROR':
                 toast.error(
                     "Server error occurred. Please contact support if amount was deducted.",
                     { duration: 6000 }
                 )
                 break
-                
+
             default:
                 toast.error(
                     errorData.message || "Payment verification failed. Please try again.",
@@ -499,7 +500,7 @@ const handlePayNow = async (paymentType = "full") => {
         // Navigate back to hotel details page after delay
         setTimeout(() => {
             router.push(
-                `/hotels/${resortId}?` + 
+                `/hotels/${resortId}?` +
                 `check_in=${bookingData.booking.checkIn}&` +
                 `check_out=${bookingData.booking.checkOut}&` +
                 `guests=${bookingData.booking.guests}&` +
@@ -787,14 +788,14 @@ const handlePayNow = async (paymentType = "full") => {
                                         <span>Room charge</span>
                                         <span>₹{bookingData.pricing.roomCharge}</span>
                                     </div>
-                                
+
                                     {appliedCoupon && (
                                         <div className="flex justify-between text-green-600">
                                             <span>Coupon applied ({appliedCoupon.code})</span>
                                             <span>-₹{bookingData.pricing.couponDiscount}</span>
                                         </div>
                                     )}
-                                    
+
                                 </div>
 
                                 {/* Apply Coupon - LARGER */}
@@ -818,7 +819,7 @@ const handlePayNow = async (paymentType = "full") => {
                                                     className="w-full text-sm"
                                                 />
                                                 <div className="flex gap-2">
-                                                    <button 
+                                                    <button
                                                         onClick={handleApplyCoupon}
                                                         disabled={isValidatingCoupon || !couponCode.trim()}
                                                         className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:bg-gray-400"
@@ -856,27 +857,27 @@ const handlePayNow = async (paymentType = "full") => {
                                 {/* Total */}
                                 <div className="flex justify-between items-baseline mb-2 pt-6 border-t border-gray-200">
                                     <span className="text-lg font-bold text-gray-900">Total</span>
-                                        <div className="pt-6 border-t border-gray-200 space-y-2">
+                                    <div className="pt-6 border-t border-gray-200 space-y-2">
                                         <div className="flex justify-between items-baseline">
                                             <span className="text-lg font-bold text-gray-900">
-                                            {payNowType === "partial" ? "Pay now" : "Total"}
+                                                {payNowType === "partial" ? "Pay now" : "Total"}
                                             </span>
                                             <span className="text-2xl font-bold text-gray-900">
-                                            ₹{payNowAmount}
+                                                ₹{payNowAmount}
                                             </span>
                                         </div>
 
                                         {payNowType === "partial" && (
                                             <div className="flex justify-between text-sm text-gray-600">
-                                            <span>Pay at property</span>
-                                            <span>₹{remainingAmount}</span>
+                                                <span>Pay at property</span>
+                                                <span>₹{remainingAmount}</span>
                                             </div>
                                         )}
 
                                         <p className="text-xs text-gray-500 text-right">
                                             Taxes included · No hidden charges
                                         </p>
-                                        </div>
+                                    </div>
 
                                 </div>
                             </div>
@@ -885,5 +886,13 @@ const handlePayNow = async (paymentType = "full") => {
                 </main>
             </div>
         </div>
+    )
+}
+
+export default function BookingPage() {
+    return (
+        <Suspense fallback={<div>Loading booking...</div>}>
+            <BookingContent />
+        </Suspense>
     )
 }

@@ -46,3 +46,6 @@ Thumbs.db
 *.egg-info/
 *.egg
 MANIFEST
+
+# Server
+server/**/keys.json
