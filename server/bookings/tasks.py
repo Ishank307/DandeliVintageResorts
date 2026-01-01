@@ -3,7 +3,7 @@ from django.core.mail import EmailMessage
 from django.conf import settings
 from background_task import background
 from bookings.models import FinalBooking
-from bookings.integrations.gsheets import append_booking_row 
+# from bookings.integrations.gsheets import append_booking_row 
 
 
 @background()   # or @background() if you don't want delay
@@ -48,7 +48,7 @@ def send_invoice_email_enqueue(booking_id):
     
     
     
-@background()  # runs ~5 sec later
-def push_booking_to_sheet_task(row):
+# @background()  # runs ~5 sec later
+# def push_booking_to_sheet_task(row):
     
-    append_booking_row(row)
+#     append_booking_row(row)

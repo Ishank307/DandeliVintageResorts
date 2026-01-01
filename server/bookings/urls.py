@@ -15,7 +15,7 @@ from .views import (
     UpdateProfileView,
     RoomSearchView,
     SelectRoomView,
-    test
+    # test
 )
 
 urlpatterns = [
@@ -40,5 +40,5 @@ urlpatterns = [
         name="booking-detail",
     ),
     path("coupon/", check_coupon, name="check-coupon"),
-    path("test/", test, name="test"),
+    # path("test/", test, name="test"),
 ]

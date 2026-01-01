@@ -17,7 +17,7 @@ from django.conf import settings
 from django.views.decorators.csrf import csrf_exempt
 import json
 from django.core.mail import send_mail
-from bookings.tasks import send_invoice_email_enqueue, push_booking_to_sheet_task
+from bookings.tasks import send_invoice_email_enqueue
 import logging
 import traceback
 
@@ -690,6 +690,6 @@ def check_coupon(request):
     
     
     
-def test(request):
-    push_booking_to_sheet_task(["1", "John Doe", "Computer Science", "Senior", "3.8"])
-    return Response({"message": "API is working!"}, status=status.HTTP_200_OK)
+# def test(request):
+#     push_booking_to_sheet_task(["1", "John Doe", "Computer Science", "Senior", "3.8"])
+#     return Response({"message": "API is working!"}, status=status.HTTP_200_OK)
