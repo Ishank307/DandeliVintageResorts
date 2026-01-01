@@ -44,10 +44,17 @@ CSRF_TRUSTED_ORIGINS = [
 CORS_ALLOWED_ORIGINS = [
     "http://127.0.0.1:5173",
     "http://localhost:5173",
+
+    "http://vintza.in",
     "https://vintza.in",
+
+    "http://www.vintza.in",
     "https://www.vintza.in",
-    "https://api.vintza.in"
+
+    "http://api.vintza.in",
+    "https://api.vintza.in",
 ]
+
 
 CORS_ALLOW_CREDENTIALS = True
 
