@@ -40,6 +40,19 @@ CSRF_TRUSTED_ORIGINS = [
     'https://www.vintza.in',
     'https://api.vintza.in'
 ]
+
+CORS_ALLOWED_ORIGINS = [
+    "http://127.0.0.1:5173",
+    "http://localhost:5173",
+    "https://vintza.in",
+    "https://www.vintza.in",
+    "https://api.vintza.in"
+]
+
+CORS_ALLOW_CREDENTIALS = True
+
+
+
 AUTH_USER_MODEL = "bookings.User"
 
 # Application definition
