@@ -33,13 +33,13 @@ def request_otp(request):
     otp_code = OTP.generate_otp()
     OTP.objects.create(phone_number=phone, code=otp_code)
 
-    # send_mail(
-    #     subject="Your OTP Code",
-    #     message=f"Your OTP code is {otp_code}",
-    #     from_email=settings.DEFAULT_FROM_EMAIL,
-    #     recipient_list=[phone],  # Replace with actual SMS gateway email
-    #     fail_silently=False,
-    # )
+    send_mail(
+        subject="Your OTP Code",
+        message=f"Your OTP code is {otp_code}",
+        from_email=settings.DEFAULT_FROM_EMAIL,
+        recipient_list=[phone],  # Replace with actual SMS gateway email
+        fail_silently=False,
+    )
     
     print(f"🔐 OTP for {phone} is {otp_code}")  # For now: print in console
 
