@@ -35,11 +35,17 @@ CSRF_TRUSTED_ORIGINS = [
     'http://localhost:8000',
     'http://127.0.0.1:3000',
     'http://127.0.0.1:8000',
-    'https://8000-firebase-vintage-1765121507399.cluster-a6zx3cwnb5hnuwbgyxmofxpkfe.cloudworkstations.dev'
+    'https://8000-firebase-vintage-1765121507399.cluster-a6zx3cwnb5hnuwbgyxmofxpkfe.cloudworkstations.dev',
+    'https://vintza.in',
+    'https://www.vintza.in',
+    'https://api.vintza.in'
 ]
 AUTH_USER_MODEL = "bookings.User"
 
 # Application definition
+
+APPEND_SLASH = True
+
 
 INSTALLED_APPS = [
     'jazzmin',
