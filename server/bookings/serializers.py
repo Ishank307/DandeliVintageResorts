@@ -1,6 +1,6 @@
 
 from rest_framework import serializers
-from .models import User, OTP, Resort, Room, BookingAttempt, FinalBooking, Payment, RoomImage,Review
+from .models import User, OTP, Resort, Room, BookingAttempt, FinalBooking, Payment, RoomImage,Review, Banner
 
 class UserSerializer(serializers.ModelSerializer):
     class Meta:
@@ -68,3 +68,9 @@ class ReviewSerializer(serializers.ModelSerializer):
             "created_at",
             "updated_at",
         )
+        
+        
+class BannerSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Banner
+        fields = ('id', 'image', 'title', 'code', 'active')

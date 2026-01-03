@@ -15,6 +15,7 @@ from .views import (
     UpdateProfileView,
     RoomSearchView,
     SelectRoomView,
+    get_banners
     # test
 )
 
@@ -40,5 +41,6 @@ urlpatterns = [
         name="booking-detail",
     ),
     path("coupon/", check_coupon, name="check-coupon"),
+    path("banners/", get_banners, name="banners"),
     # path("test/", test, name="test"),
 ]

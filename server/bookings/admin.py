@@ -12,7 +12,8 @@ from .models import (
     BookingRoom,
     BookingGuest,
     Review,
-    Coupon
+    Coupon,
+    Banner,
 )
 
 @admin.register(User)
@@ -84,3 +85,4 @@ admin.site.register(BookingAttemptRooms)
 admin.site.register(GuestTemp)
 admin.site.register(BookingRoom)
 admin.site.register(BookingGuest)
+admin.site.register(Banner)

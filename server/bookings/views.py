@@ -2,8 +2,8 @@
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status
-from .models import Room, Resort, OTP, User, BookingAttempt, BookingAttemptRooms, GuestTemp, Payment, FinalBooking, BookingRoom, BookingGuest,Review, Coupon
-from .serializers import RoomSerializer, ReviewSerializer
+from .models import Room, Resort, OTP, User, BookingAttempt,Banner, BookingAttemptRooms, GuestTemp, Payment, FinalBooking, BookingRoom, BookingGuest,Review, Coupon
+from .serializers import RoomSerializer, ReviewSerializer, BannerSerializer
 from django.db.models import Q, Sum
 from datetime import datetime, timedelta
 from rest_framework.decorators import api_view
@@ -564,7 +564,7 @@ class MyBookingsView(APIView):
         for booking in bookings:
             rooms = [br.room for br in booking.bookingroom_set.all()]
             room_data = RoomSerializer(rooms, many=True).data
-
+            discounted_2_percent = bookings.amount * Decimal('0.02')
             booking_list.append({
                 "booking_id": booking.id,
                 "resort_name": booking.resort.name if booking.resort else None,
@@ -577,7 +577,7 @@ class MyBookingsView(APIView):
                 "payment_status": booking.payment.status if booking.payment else "N/A",
                 "payment_type": booking.payment.type if booking.payment else None,
                 "payment": {
-                    "amount": float(booking.payment.amount)
+                    "amount": float(discounted_2_percent)
                 } if booking.payment else None,
             })
 
@@ -688,8 +688,13 @@ def check_coupon(request):
         return Response({"valid": False})
     
     
-    
-    
-# def test(request):
+ 
+
+@api_view(['GET'])   
+def get_banners(request):
+    banners = Banner.objects.filter(active=True,)
+    serializer = BannerSerializer(banners, many=True, context={'request': request})
+    return Response(serializer.data, status=status.HTTP_200_OK)
+
 #     push_booking_to_sheet_task(["1", "John Doe", "Computer Science", "Senior", "3.8"])
 #     return Response({"message": "API is working!"}, status=status.HTTP_200_OK)

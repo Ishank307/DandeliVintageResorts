@@ -1,5 +1,5 @@
 
-import { Suspense } from "react"
+import { Suspense, use } from "react"
 import { getExploreRooms } from "@/lib/api"
 import ExploreSection from "../../../components/ExploreSecton"
 
