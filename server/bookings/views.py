@@ -567,7 +567,9 @@ class MyBookingsView(APIView):
         for booking in bookings:
             rooms = [br.room for br in booking.bookingroom_set.all()]
             room_data = RoomSerializer(rooms, many=True).data
-            discounted_2_percent = bookings.amount * Decimal('0.02')
+            
+            payment_amount = booking.payment.amount if booking.payment else Decimal('0')
+
             booking_list.append({
                 "booking_id": booking.id,
                 "resort_name": booking.resort.name if booking.resort else None,
@@ -580,7 +582,7 @@ class MyBookingsView(APIView):
                 "payment_status": booking.payment.status if booking.payment else "N/A",
                 "payment_type": booking.payment.type if booking.payment else None,
                 "payment": {
-                    "amount": float(discounted_2_percent)
+                    "amount": float(payment_amount)
                 } if booking.payment else None,
             })
 
