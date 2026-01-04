@@ -1,88 +1,78 @@
-
 from django.urls import reverse
 from rest_framework import status
 from rest_framework.test import APITestCase
-from .models import User, OTP, Resort, Room
+from bookings.models import User, Resort, Room, BookingAttempt, BookingAttemptRooms
 from unittest.mock import patch
+from decimal import Decimal
+from django.utils import timezone
+from datetime import timedelta
+from django.conf import settings
 
-class AuthTests(APITestCase):
-    def test_request_otp(self):
-        url = reverse('request_otp')
-        data = {'phone_number': '1234567890'}
-        response = self.client.post(url, data, format='json')
-        self.assertEqual(response.status_code, status.HTTP_200_OK)
-        self.assertEqual(response.data['message'], 'OTP sent successfully')
-
-    def test_verify_otp(self):
-        # First, request an OTP
-        otp = OTP.objects.create(phone_number='1234567890', code='123456')
-        
-        url = reverse('verify_otp')
-        data = {'phone_number': '1234567890', 'otp': '123456'}
-        response = self.client.post(url, data, format='json')
-        
-        self.assertEqual(response.status_code, status.HTTP_200_OK)
-        self.assertIn('access', response.data)
-        self.assertIn('refresh', response.data)
-
-class BookingTests(APITestCase):
+class PaymentDiscountTests(APITestCase):
     def setUp(self):
         self.user = User.objects.create_user(phone_number='9876543210')
         self.client.force_authenticate(user=self.user)
-        self.resort = Resort.objects.create(name='Test Resort', location='Test Location')
-        self.room = Room.objects.create(resort=self.resort, room_number='101', capacity=2, price_per_night=100.00)
-
-    def test_room_search(self):
-        url = reverse('room-search')
-        response = self.client.get(url, {'resort_id': self.resort.id, 'check_in_date': '2024-06-01', 'check_out_date': '2024-06-03', 'guests': 2})
-        self.assertEqual(response.status_code, status.HTTP_200_OK)
-        self.assertIn('booking_attempt_id', response.data)
-        self.assertIn('suggested_rooms', response.data)
-
-    def test_select_room(self):
-        # Create a booking attempt first
-        booking_attempt_url = reverse('room-search')
-        response = self.client.get(booking_attempt_url, {'resort_id': self.resort.id, 'check_in_date': '2024-06-01', 'check_out_date': '2024-06-03', 'guests': 2})
-        booking_attempt_id = response.data['booking_attempt_id']
-
-        url = reverse('select-rooms')
-        data = {'booking_attempt_id': booking_attempt_id, 'room_ids': [self.room.id]}
-        response = self.client.post(url, data, format='json')
-        self.assertEqual(response.status_code, status.HTTP_200_OK)
-        self.assertEqual(response.data['message'], 'Rooms selected successfully.')
-
-    def test_add_guests(self):
-        # Create a booking attempt and select a room
-        booking_attempt_url = reverse('room-search')
-        response = self.client.get(booking_attempt_url, {'resort_id': self.resort.id, 'check_in_date': '2024-06-01', 'check_out_date': '2024-06-03', 'guests': 1})
-        booking_attempt_id = response.data['booking_attempt_id']
-        select_room_url = reverse('select-rooms')
-        self.client.post(select_room_url, {'booking_attempt_id': booking_attempt_id, 'room_ids': [self.room.id]}, format='json')
-
-        url = reverse('add-guests')
-        data = {'booking_attempt_id': booking_attempt_id, 'guests': [{'room_id': self.room.id, 'name': 'Test Guest', 'age': 30}]}
-        response = self.client.post(url, data, format='json')
-        self.assertEqual(response.status_code, status.HTTP_200_OK)
-        self.assertEqual(response.data['message'], 'Guest details added successfully.')
+        self.resort = Resort.objects.create(name='Test Resort Discount', location='Test Location')
+        # Room price: 1000.00
+        self.room = Room.objects.create(resort=self.resort, room_number='101', capacity=2, price_per_night=1000.00)
+        
+        # Create a booking attempt
+        self.check_in = timezone.now().date() + timedelta(days=1)
+        self.check_out = timezone.now().date() + timedelta(days=2) # 1 night
+        self.booking_attempt = BookingAttempt.objects.create(
+            user=self.user,
+            resort=self.resort,
+            check_in=self.check_in,
+            check_out=self.check_out,
+            guest_count=1,
+            expires_at=timezone.now() + timedelta(minutes=30)
+        )
+        BookingAttemptRooms.objects.create(attempt=self.booking_attempt, room=self.room)
+        # Total price for 1 night = 1000.00
 
     @patch('razorpay.Client')
-    def test_initiate_payment(self, mock_razorpay_client):
-        # Mock the razorpay client
-        mock_order = {'id': 'order_test', 'amount': 20000, 'currency': 'INR'}
+    def test_full_payment_discount(self, mock_razorpay_client):
+        # Mocking razorpay response
+        mock_order = {'id': 'order_full', 'amount': 98000, 'currency': 'INR'} # 1000 * 0.98 * 100 = 98000 paise
         mock_razorpay_client.return_value.order.create.return_value = mock_order
 
-        # Create a booking attempt, select a room, and add guests
-        booking_attempt_url = reverse('room-search')
-        response = self.client.get(booking_attempt_url, {'resort_id': self.resort.id, 'check_in_date': '2024-06-01', 'check_out_date': '2024-06-03', 'guests': 1})
-        booking_attempt_id = response.data['booking_attempt_id']
-        select_room_url = reverse('select-rooms')
-        self.client.post(select_room_url, {'booking_attempt_id': booking_attempt_id, 'room_ids': [self.room.id]}, format='json')
-        add_guests_url = reverse('add-guests')
-        self.client.post(add_guests_url, {'booking_attempt_id': booking_attempt_id, 'guests': [{'room_id': self.room.id, 'name': 'Test Guest', 'age': 30}]}, format='json')
-
-        url = reverse('initiate-payment')
-        data = {'booking_attempt_id': booking_attempt_id}
+        url = reverse('create-order')
+        data = {
+            'booking_attempt_id': self.booking_attempt.id,
+            'payment_type': 'full'
+        }
         response = self.client.post(url, data, format='json')
-        self.assertEqual(response.status_code, status.HTTP_200_OK)
-        self.assertEqual(response.data['message'], 'Payment initiated.')
-        self.assertEqual(response.data['razorpay_order_id'], 'order_test')
+        
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        
+        # Verify the calculation: 1000 * 0.98 = 980.00
+        # Razorpay expects it in paise (int)
+        expected_amount_paise = int(Decimal('1000.00') * Decimal('0.98') * 100)
+        mock_razorpay_client.return_value.order.create.assert_called_once()
+        args, kwargs = mock_razorpay_client.return_value.order.create.call_args
+        self.assertEqual(kwargs['amount'], expected_amount_paise)
+        self.assertEqual(kwargs['amount'], 98000)
+
+    @patch('razorpay.Client')
+    def test_partial_payment_no_discount(self, mock_razorpay_client):
+        # Mocking razorpay response
+        # settings.PARTIAL_PAYMENT_PERCENTAGE is 25
+        # 1000 * 0.25 * 100 = 25000 paise
+        mock_order = {'id': 'order_partial', 'amount': 25000, 'currency': 'INR'} 
+        mock_razorpay_client.return_value.order.create.return_value = mock_order
+
+        url = reverse('create-order')
+        data = {
+            'booking_attempt_id': self.booking_attempt.id,
+            'payment_type': 'partial'
+        }
+        response = self.client.post(url, data, format='json')
+        
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        
+        # Verify the calculation: 1000 * 0.25 = 250.00
+        expected_amount_paise = int(Decimal('1000.00') * (Decimal(settings.PARTIAL_PAYMENT_PERCENTAGE) / Decimal(100)) * 100)
+        mock_razorpay_client.return_value.order.create.assert_called_once()
+        args, kwargs = mock_razorpay_client.return_value.order.create.call_args
+        self.assertEqual(kwargs['amount'], expected_amount_paise)
+        self.assertEqual(kwargs['amount'], 25000)

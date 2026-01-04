@@ -335,6 +335,9 @@ class CreateRazorpayOrderView(APIView):
         if payment_type == 'partial':
              percentage = Decimal(settings.PARTIAL_PAYMENT_PERCENTAGE) / Decimal(100)
              amount_to_pay = total_price * percentage
+        elif payment_type == 'full':
+             # Apply 2% discount for full payment
+             amount_to_pay = total_price * Decimal('0.98')
 
         client = razorpay.Client(auth=(settings.RAZORPAY_KEY_ID, settings.RAZORPAY_KEY_SECRET))
 
